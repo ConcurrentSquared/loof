@@ -1,3 +1,3 @@
-module concurrensquared.com/loof
+module concurrensquared.com/loof-backend
 
 go 1.22.5
