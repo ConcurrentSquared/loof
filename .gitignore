@@ -25,4 +25,4 @@ go.work.sum
 .env
 
 # Pocketbase data
-pb-data/
+pb_data/
