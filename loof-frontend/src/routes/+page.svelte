@@ -1,8 +1,6 @@
 <script>
-    import TreeViewer from "$lib/tree-viewer.svelte";
-
+    import Node from "$lib/node.svelte";
+	import TreeViewer from "$lib/tree-viewer.svelte";
 </script>
-<TreeViewer>
-	<h1>Welcome to SvelteKit</h1>
-	<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
-</TreeViewer>
+
+<TreeViewer></TreeViewer>

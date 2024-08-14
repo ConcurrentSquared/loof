@@ -1,2 +1,3 @@
 // place files you want to import through the `$lib` alias in this folder.
 export { default as TreeViewer } from "./tree-viewer.svelte";
+export { default as Node } from "./node.svelte";
