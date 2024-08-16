@@ -1,25 +1,50 @@
 <script lang="ts">
-	let { xPosition = "0", yPosition = "0", text = "" } = $props();
+    import NodeActions from "./node-actions.svelte";
+
+	let { xPosition = "0", yPosition = "0", text = "", bookmarks = "0", likes = "0", nodeId = "" } = $props();
 </script>
 
 <div class="node" style="top: {yPosition}px; left: {xPosition}px">
-	<textarea>{text}</textarea>
-	<button id="like-button">Like</button>
+	<textarea class="node-text-area">{text}</textarea>
+	<NodeActions bookmarks={bookmarks} likes={likes} nodeId={nodeId}></NodeActions>
 </div>
 
 <style>
 	.node {
-		position: absolute;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
 
-		padding: 50px;
+		position: absolute;
 
 		background-color: white;
 
-		border: 15px solid black;
-		border-radius: 30px;
+		box-sizing: content-box;
+
+		width: 400px;
+		height: 200px;
+
+		overflow: hidden;
+
+		border-radius: 2.5px;
+	}
+
+	.node-text-area {
+		height: 80%;
+    	width: 100%;
+
+		resize: none;
+
+		border: 5px solid rgb(133, 133, 133);
+		border-bottom: none;
 		box-sizing: border-box;
 
-		width: 500px;
-		height: 500px;
+		background-color: rgb(255, 252, 245);
+	}
+
+	.node-text-area:focus {
+		outline: none;
+
+		border: 5px solid rgb(133, 133, 133);
 	}
 </style>

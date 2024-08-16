@@ -106,10 +106,10 @@
 		if (ctx != null) {
 			nodes.forEach(node => {
 				if (node.expand != null) {
-					let previousNodeXPosition = node.expand!.previous_node.x_position + 250;
-					let previousNodeYPosition = node.expand!.previous_node.y_position + 500;
+					let previousNodeXPosition = node.expand!.previous_node.x_position + 200;
+					let previousNodeYPosition = node.expand!.previous_node.y_position + 200;
 
-					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, (node.x_position + 250) + xOffset, (node.y_position) + yOffset, ctx);
+					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, (node.x_position + 200) + xOffset, node.y_position + yOffset, ctx);
 				}
 			});
 		}
@@ -118,7 +118,7 @@
 
 <div id="tree-container" style="top: {yOffset}px; left: {xOffset}px">
 	{#each nodes as node}
-		<Node xPosition={node.x_position} yPosition={node.y_position} text={node.text}></Node>
+		<Node xPosition={node.x_position} yPosition={node.y_position} text={node.text} bookmarks={node.bookmarks} likes={node.likes} nodeId={node.id}></Node>
 	{/each}
 </div>
 <canvas id="tree-background"></canvas>
