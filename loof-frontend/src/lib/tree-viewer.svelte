@@ -5,10 +5,36 @@
 
 	import Node from './node.svelte';
 
-	let xOffset = 50;
-	let yOffset = 150;
+	let xOffset = $state(0);
+	let yOffset = $state(0);
 
-	let node: RecordModel | null = null;
+	let nodes: RecordModel[] = $state([]);
+
+	function drawArrow(startX: number, startY: number, endX: number, endY: number, ctx: CanvasRenderingContext2D) {
+		ctx.beginPath();
+
+		ctx.moveTo(startX, startY);
+		ctx.lineTo(endX, endY);
+
+		let lineRads = Math.atan2(-(endY - startY), -(endX - startX));
+
+		let leftRads = lineRads - (30 * (Math.PI / 180));
+		let rightRads = lineRads + (30 * (Math.PI / 180));
+
+		let leftX = (Math.cos(leftRads) * 25) + endX;
+		let leftY = (Math.sin(leftRads) * 25) + endY;
+
+		let rightX = (Math.cos(rightRads) * 25) + endX;
+		let rightY = (Math.sin(rightRads) * 25) + endY;
+
+		ctx.lineTo(leftX, leftY);
+		ctx.moveTo(endX, endY);
+		
+		ctx.lineTo(rightX, rightY);
+
+		ctx.closePath();
+		ctx.stroke();
+	}
 
 	onMount(async () => {
 		let dragging = false;
@@ -24,11 +50,11 @@
 
 		let pb = new PocketBase('http://127.0.0.1:8090');
 
-		let nodeData = await pb.collection('nodes').getFullList({});
-
-		node = nodeData[0]
+		nodes = await pb.collection('nodes').getFullList({
+			expand: "previous_node"
+		});
 		
-		if((treeContainerDiv != null) && (treeBackground != null) && (ctx != null)) {
+		if((treeContainerDiv != null) && (treeBackground != null)) {
 			treeContainerDiv.style.left = xOffset.toString() + "px";
 			treeContainerDiv.style.top = yOffset.toString() + "px";
 
@@ -67,36 +93,33 @@
 
 			treeBackground.width = window.innerWidth;
 			treeBackground.height = window.innerHeight;
-			
-			ctx.beginPath();
-
-			ctx.moveTo(0, 0);
-			ctx.lineTo(50, 50);
-
-			let lineRads = Math.atan2(-50, -50);
-
-			let leftRads = lineRads - (30 * (Math.PI / 180));
-			let rightRads = lineRads + (30 * (Math.PI / 180));
-
-			let leftX = (Math.cos(leftRads) * 25) + 50;
-			let leftY = (Math.sin(leftRads) * 25) + 50;
-
-			let rightX = (Math.cos(rightRads) * 25) + 50;
-			let rightY = (Math.sin(rightRads) * 25) + 50;
-
-			ctx.lineTo(leftX, leftY);
-			ctx.moveTo(50, 50);
-			
-			ctx.lineTo(rightX, rightY);
-
-			ctx.closePath();
-			ctx.stroke();
 		}
   	});
+
+	$effect(() => {
+		let treeContainerDiv = document.getElementById("tree-container");
+		let treeBackground = document.getElementById("tree-background") as HTMLCanvasElement;
+		let ctx = treeBackground.getContext("2d");
+
+		ctx?.reset();
+
+		if (ctx != null) {
+			nodes.forEach(node => {
+				if (node.expand != null) {
+					let previousNodeXPosition = node.expand!.previous_node.x_position + 250;
+					let previousNodeYPosition = node.expand!.previous_node.y_position + 500;
+
+					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, (node.x_position + 250) + xOffset, (node.y_position) + yOffset, ctx);
+				}
+			});
+		}
+	})
 </script>
 
 <div id="tree-container" style="top: {yOffset}px; left: {xOffset}px">
-	<Node xPosition={node?.x_position} yPosition={node?.y_position} text={node?.text}></Node>
+	{#each nodes as node}
+		<Node xPosition={node.x_position} yPosition={node.y_position} text={node.text}></Node>
+	{/each}
 </div>
 <canvas id="tree-background"></canvas>
 
