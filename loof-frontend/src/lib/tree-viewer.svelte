@@ -1,15 +1,27 @@
 <script lang="ts">
 	import { onMount, mount } from 'svelte';
 	import PocketBase from 'pocketbase';
-    import type { RecordModel } from 'pocketbase';
+    import type { RecordAuthResponse, RecordModel } from 'pocketbase';
 
 	import Node from './node.svelte';
+    import LoginButton from './login-button.svelte';
+	import type { InConstructionNode } from './node.ts'
 
 	let xOffset = $state(0);
 	let yOffset = $state(0);
 
+	let localMousePositionX = $state(0);
+	let localMousePositionY = $state(0);
+
+	let mousePositionX = $derived((localMousePositionX - xOffset).toString());
+	let mousePositionY = $derived((localMousePositionY - yOffset).toString());
+
 	let nodes: RecordModel[] = $state([]);
 
+	let authData: RecordAuthResponse<RecordModel> | null = $state(null);
+
+	let inConstructionNodes: InConstructionNode[] = $state([]);
+	
 	function drawArrow(startX: number, startY: number, endX: number, endY: number, ctx: CanvasRenderingContext2D) {
 		ctx.beginPath();
 
@@ -74,6 +86,11 @@
 				}
 			});
 
+			document.addEventListener("mousemove", (event) => {
+				localMousePositionX = event.clientX - 200;
+				localMousePositionY = event.clientY - 100;
+			})
+
 			treeBackground.addEventListener("mousedown", (event) => { 
 				if (event.button == 0) {
 					dragging = true;
@@ -118,10 +135,14 @@
 
 <div id="tree-container" style="top: {yOffset}px; left: {xOffset}px">
 	{#each nodes as node}
-		<Node xPosition={node.x_position} yPosition={node.y_position} text={node.text} bookmarks={node.bookmarks} likes={node.likes} nodeId={node.id}></Node>
+		<Node xPosition={node.x_position} yPosition={node.y_position} text={node.text} bookmarks={node.bookmarks} likes={node.likes} nodeId={node.id} newNodeArray={inConstructionNodes}></Node>
+	{/each}
+	{#each inConstructionNodes as constructionNode}
+		<Node xPosition={mousePositionX} yPosition={mousePositionY} text="" bookmarks=0 likes=0 nodeId="" newNodeArray={inConstructionNodes}></Node>
 	{/each}
 </div>
 <canvas id="tree-background"></canvas>
+<LoginButton authData={authData}></LoginButton>
 
 <style>
 	#tree-container {
