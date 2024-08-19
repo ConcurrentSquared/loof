@@ -1,12 +1,33 @@
 <script lang="ts">
     import NodeActions from "./node-actions.svelte";
+    import { NodeState, type NodeData } from "./node-data.svelte";
 
-	let { xPosition = "0", yPosition = "0", text = "", bookmarks = "0", likes = "0", nodeId = "", newNodeArray=$bindable([]) } = $props();
+	let { nodeData = {id: null,
+
+					state: NodeState.moving,
+
+					authorId: "test",
+					previousNodeId: "",
+
+					x: 0,
+					y: 0,
+
+					text: ""}, newNodeArray=$bindable([]) }: { nodeData: NodeData, newNodeArray: Array<NodeData> } = $props();
+
+	function checkEditable(nodeData: NodeData): boolean {
+		switch (nodeData.state) {
+			case NodeState.editing:
+				return true;
+			default:
+				return false;
+		}
+	}
+	let isEditable = $derived(checkEditable(nodeData));
 </script>
 
-<div class="node" style="top: {yPosition}px; left: {xPosition}px">
-	<textarea class="node-text-area">{text}</textarea>
-	<NodeActions bookmarks={bookmarks} likes={likes} nodeId={nodeId} bind:newNodeArray={newNodeArray}></NodeActions>
+<div class="node" style="top: {nodeData.y!.toString()}px; left: {nodeData.x!.toString()}px">
+	<textarea class="node-text-area" readonly={!isEditable}>{nodeData.text}</textarea>
+	<NodeActions bookmarks=0 likes=0 nodeId={nodeData.id!} bind:newNodeArray={newNodeArray}></NodeActions>
 </div>
 
 <style>

@@ -5,7 +5,7 @@
 
 	import Node from './node.svelte';
     import LoginButton from './login-button.svelte';
-	import { NodeState, type InConstructionNode } from './node-data.svelte'
+	import { fromDatabase, type NodeData, NodeState } from './node-data.svelte'
 
 	let xOffset = $state(0);
 	let yOffset = $state(0);
@@ -16,11 +16,11 @@
 	let mousePositionX = $derived((localMousePositionX - xOffset));
 	let mousePositionY = $derived((localMousePositionY - yOffset));
 
-	let nodes: RecordModel[] = $state([]);
+	let nodes: NodeData[] = $state([]);
 
 	let authData: RecordAuthResponse<RecordModel> | null = $state(null);
 
-	let inConstructionNodes: InConstructionNode[] = $state([]);
+	let inConstructionNodes: NodeData[] = $state([]);
 	
 	function drawArrow(startX: number, startY: number, endX: number, endY: number, ctx: CanvasRenderingContext2D) {
 		ctx.beginPath();
@@ -62,8 +62,10 @@
 
 		let pb = new PocketBase('http://127.0.0.1:8090');
 
-		nodes = await pb.collection('nodes').getFullList({
-			expand: "previous_node"
+		let nodeRecords = await pb.collection('nodes').getFullList({});
+
+		nodeRecords.forEach(nodeRecord => {
+			nodes = [...nodes, fromDatabase(nodeRecord)];
 		});
 		
 		if((treeContainerDiv != null) && (treeBackground != null)) {
@@ -89,7 +91,7 @@
 			document.addEventListener("mousemove", (event) => {
 				localMousePositionX = event.clientX - 200;
 				localMousePositionY = event.clientY - 100;
-
+				
 				inConstructionNodes.forEach(node => {
 					if (node.state == NodeState.moving) {
 						node.x = mousePositionX;
@@ -129,20 +131,23 @@
 
 		if (ctx != null) {
 			nodes.forEach(node => {
-				if (node.expand != null) {
-					let previousNodeXPosition = node.expand!.previous_node.x_position + 200;
-					let previousNodeYPosition = node.expand!.previous_node.y_position + 200;
+				let previous_node = nodes.find((databaseNode => (databaseNode.id == node.previousNodeId)));
+				if (previous_node != null) {
+					let previousNodeXPosition = previous_node.x! + 200;
+					let previousNodeYPosition = previous_node.y! + 200;
 
-					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, (node.x_position + 200) + xOffset, node.y_position + yOffset, ctx);
+					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, (node.x! + 200) + xOffset, node.y! + yOffset, ctx);
 				}
 			});
 
 			inConstructionNodes.forEach(node => {
-				let previous_node = nodes.find((databaseNode => (databaseNode.id == node.previousNodeId)))!;
-				let previousNodeXPosition = previous_node.x_position + 200;
-				let previousNodeYPosition = previous_node.y_position + 200;
+				let previous_node = nodes.find((databaseNode => (databaseNode.id == node.previousNodeId)));
+				if (previous_node != null) {
+					let previousNodeXPosition = previous_node.x! + 200;
+					let previousNodeYPosition = previous_node.y! + 200;
 
-				drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, ((node.x ?? mousePositionX) + 200) + xOffset, (node.y ?? mousePositionY) + yOffset, ctx);
+					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, ((node.x ?? mousePositionX) + 200) + xOffset, (node.y ?? mousePositionY) + yOffset, ctx);
+				}
 			})
 		}
 	})
@@ -150,10 +155,10 @@
 
 <div id="tree-container" style="top: {yOffset}px; left: {xOffset}px">
 	{#each nodes as node}
-		<Node xPosition={node.x_position} yPosition={node.y_position} text={node.text} bookmarks={node.bookmarks} likes={node.likes} nodeId={node.id} bind:newNodeArray={inConstructionNodes}></Node>
+		<Node nodeData={node} bind:newNodeArray={inConstructionNodes}></Node>
 	{/each}
 	{#each inConstructionNodes as constructionNode}
-		<Node xPosition={(constructionNode.x ?? mousePositionX).toString()} yPosition={(constructionNode.y ?? mousePositionY).toString()} text="" bookmarks=0 likes=0 nodeId="" bind:newNodeArray={inConstructionNodes}></Node>
+		<Node nodeData={constructionNode} bind:newNodeArray={inConstructionNodes}></Node>
 	{/each}
 </div>
 <canvas id="tree-background"></canvas>

@@ -3,9 +3,9 @@
     import Node from './node.svelte';
     import { mount } from 'svelte';
 
-	import { NodeState, type InConstructionNode } from './node-data.svelte'
+	import { NodeState, type NodeData } from './node-data.svelte'
 
-	let { bookmarks = "0", likes = "0", nodeId="", newNodeArray=$bindable([]) } = $props();
+	let { bookmarks = "0", likes = "0", nodeId="", newNodeArray=$bindable([]) }: { bookmarks: string, likes: string, nodeId: string, newNodeArray: Array<NodeData> } = $props();
 	let currentNodeIndex: number | null = $state(null);
 	let debounceTimeout: number | null = $state(null);
 
@@ -13,14 +13,18 @@
 
 	async function addNode() {
 		if (currentNodeIndex == null) {
-			let arr = newNodeArray as Array<InConstructionNode>;
-			currentNodeIndex = arr.push({
-				state: NodeState.moving, 
-				previousNodeId: nodeId,
+			currentNodeIndex = newNodeArray.length;
+			newNodeArray = [...newNodeArray, {id: null,
 
-				x: null,
-				y: null
-			}) - 1;
+											state: NodeState.moving,
+
+											authorId: "test",
+											previousNodeId: nodeId,
+
+											x: 0,
+											y: 0,
+
+											text: ""}]
 
 			canStopMoving = false;
 			debounceTimeout = setTimeout(endDebounce, 400);
@@ -49,8 +53,7 @@
 
 	async function onClick(event: MouseEvent) {
 		if ((currentNodeIndex != null) && (canStopMoving == true)) {
-			let arr = newNodeArray as Array<InConstructionNode>;
-			arr[currentNodeIndex].state = NodeState.editing;
+			newNodeArray[currentNodeIndex].state = NodeState.editing;
 
 			currentNodeIndex = null;
 		}
