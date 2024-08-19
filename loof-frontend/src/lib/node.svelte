@@ -1,12 +1,12 @@
 <script lang="ts">
     import NodeActions from "./node-actions.svelte";
 
-	let { xPosition = "0", yPosition = "0", text = "", bookmarks = "0", likes = "0", nodeId = "", newNodeArray=[] } = $props();
+	let { xPosition = "0", yPosition = "0", text = "", bookmarks = "0", likes = "0", nodeId = "", newNodeArray=$bindable([]) } = $props();
 </script>
 
 <div class="node" style="top: {yPosition}px; left: {xPosition}px">
 	<textarea class="node-text-area">{text}</textarea>
-	<NodeActions bookmarks={bookmarks} likes={likes} nodeId={nodeId} newNodeArray={newNodeArray}></NodeActions>
+	<NodeActions bookmarks={bookmarks} likes={likes} nodeId={nodeId} bind:newNodeArray={newNodeArray}></NodeActions>
 </div>
 
 <style>

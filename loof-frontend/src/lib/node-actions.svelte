@@ -3,16 +3,30 @@
     import Node from './node.svelte';
     import { mount } from 'svelte';
 
-	import type { InConstructionNode } from './node.ts'
+	import { NodeState, type InConstructionNode } from './node-data.svelte'
 
-	let { bookmarks = "0", likes = "0", nodeId="", newNodeArray=[] } = $props();
+	let { bookmarks = "0", likes = "0", nodeId="", newNodeArray=$bindable([]) } = $props();
+	let currentNodeIndex: number | null = $state(null);
+	let debounceTimeout: number | null = $state(null);
+
+	let canStopMoving = $state(false);
 
 	async function addNode() {
-		let arr = newNodeArray as Array<InConstructionNode>;
-		arr.push({
-			x: 0,
-			y: 0
-		})
+		if (currentNodeIndex == null) {
+			let arr = newNodeArray as Array<InConstructionNode>;
+			currentNodeIndex = arr.push({
+				state: NodeState.moving, 
+				x: null,
+				y: null
+			}) - 1;
+
+			canStopMoving = false;
+			debounceTimeout = setTimeout(endDebounce, 400);
+		}
+	}
+
+	async function endDebounce() {
+		canStopMoving = true
 	}
 
 	async function addBookmarks() {
@@ -30,14 +44,24 @@
 		let newNodeData = await pocketbase.collection('nodes').update(nodeId, {"likes": (oldNodeData.likes + 1) });
 		likes = newNodeData.likes;
 	}
+
+	async function onClick(event: MouseEvent) {
+		if ((currentNodeIndex != null) && (canStopMoving == true)) {
+			let arr = newNodeArray as Array<InConstructionNode>;
+			arr[currentNodeIndex].state = NodeState.editing;
+
+			currentNodeIndex = null;
+		}
+	}
 </script>
 
 <div class="node-actions-container">
-	<button onclick={addNode}>New Branch</button>
+	<button id="new_branch_button" onclick={addNode}>New Branch</button>
 
 	<button onclick={addBookmarks}>Bookmark: {bookmarks}</button>
 	<button onclick={addLikes}>Like: {likes}</button>
 </div>
+<svelte:window onclick={onClick}/>
 
 <style>
 	.node-actions-container {

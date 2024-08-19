@@ -5,7 +5,7 @@
 
 	import Node from './node.svelte';
     import LoginButton from './login-button.svelte';
-	import type { InConstructionNode } from './node.ts'
+	import { NodeState, type InConstructionNode } from './node-data.svelte'
 
 	let xOffset = $state(0);
 	let yOffset = $state(0);
@@ -13,8 +13,8 @@
 	let localMousePositionX = $state(0);
 	let localMousePositionY = $state(0);
 
-	let mousePositionX = $derived((localMousePositionX - xOffset).toString());
-	let mousePositionY = $derived((localMousePositionY - yOffset).toString());
+	let mousePositionX = $derived((localMousePositionX - xOffset));
+	let mousePositionY = $derived((localMousePositionY - yOffset));
 
 	let nodes: RecordModel[] = $state([]);
 
@@ -89,6 +89,13 @@
 			document.addEventListener("mousemove", (event) => {
 				localMousePositionX = event.clientX - 200;
 				localMousePositionY = event.clientY - 100;
+
+				inConstructionNodes.forEach(node => {
+					if (node.state == NodeState.moving) {
+						node.x = mousePositionX;
+						node.y = mousePositionY;
+					}
+				});
 			})
 
 			treeBackground.addEventListener("mousedown", (event) => { 
@@ -135,10 +142,10 @@
 
 <div id="tree-container" style="top: {yOffset}px; left: {xOffset}px">
 	{#each nodes as node}
-		<Node xPosition={node.x_position} yPosition={node.y_position} text={node.text} bookmarks={node.bookmarks} likes={node.likes} nodeId={node.id} newNodeArray={inConstructionNodes}></Node>
+		<Node xPosition={node.x_position} yPosition={node.y_position} text={node.text} bookmarks={node.bookmarks} likes={node.likes} nodeId={node.id} bind:newNodeArray={inConstructionNodes}></Node>
 	{/each}
 	{#each inConstructionNodes as constructionNode}
-		<Node xPosition={mousePositionX} yPosition={mousePositionY} text="" bookmarks=0 likes=0 nodeId="" newNodeArray={inConstructionNodes}></Node>
+		<Node xPosition={(constructionNode.x ?? mousePositionX).toString()} yPosition={(constructionNode.y ?? mousePositionY).toString()} text="" bookmarks=0 likes=0 nodeId="" bind:newNodeArray={inConstructionNodes}></Node>
 	{/each}
 </div>
 <canvas id="tree-background"></canvas>
