@@ -6,11 +6,14 @@
 
 	export class InConstructionNode {
 		state: NodeState;
+		previousNodeId: string;
+
 		x: number | null;
 		y: number | null;
 
-		constructor(x: number, y: number) {
+		constructor(previousNodeId: string, x: number, y: number) {
 			this.state = NodeState.moving;
+			this.previousNodeId = previousNodeId;
 
 			this.x = x;
 			this.y = y;

@@ -16,6 +16,8 @@
 			let arr = newNodeArray as Array<InConstructionNode>;
 			currentNodeIndex = arr.push({
 				state: NodeState.moving, 
+				previousNodeId: nodeId,
+
 				x: null,
 				y: null
 			}) - 1;

@@ -136,6 +136,14 @@
 					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, (node.x_position + 200) + xOffset, node.y_position + yOffset, ctx);
 				}
 			});
+
+			inConstructionNodes.forEach(node => {
+				let previous_node = nodes.find((databaseNode => (databaseNode.id == node.previousNodeId)))!;
+				let previousNodeXPosition = previous_node.x_position + 200;
+				let previousNodeYPosition = previous_node.y_position + 200;
+
+				drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, ((node.x ?? mousePositionX) + 200) + xOffset, (node.y ?? mousePositionY) + yOffset, ctx);
+			})
 		}
 	})
 </script>
