@@ -23,11 +23,12 @@
 		}
 	}
 	let isEditable = $derived(checkEditable(nodeData));
+	let currentText = $state(nodeData.text);
 </script>
 
 <div class="node" style="top: {nodeData.y!.toString()}px; left: {nodeData.x!.toString()}px">
-	<textarea class="node-text-area" readonly={!isEditable}>{nodeData.text}</textarea>
-	<NodeActions bookmarks=0 likes=0 nodeId={nodeData.id!} bind:newNodeArray={newNodeArray}></NodeActions>
+	<textarea class="node-text-area" readonly={!isEditable} bind:value={currentText}></textarea>
+	<NodeActions bookmarks=0 likes=0 nodeData={nodeData} text={currentText} bind:newNodeArray={newNodeArray}></NodeActions>
 </div>
 
 <style>
