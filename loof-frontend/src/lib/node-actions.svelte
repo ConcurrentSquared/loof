@@ -4,6 +4,7 @@
     import { mount } from 'svelte';
 
 	import { NodeState, toDatabase, type NodeData } from './node-data.svelte'
+    import Switchbox from './switchbox.svelte';
 
 	let { bookmarks = "0", likes = "0", nodeData={id: null,
 
@@ -21,7 +22,17 @@
 
 	let canStopMoving = $state(false);
 
-	async function addNode() {
+	let isSwitchboxOpen = $state(false);
+	let switchboxPositionX: number = $state(0);
+	let switchboxPositionY: number = $state(0);
+
+	let NewBranchButton: HTMLElement | null = $state(null);
+
+	async function addNode(event: MouseEvent) {
+		isSwitchboxOpen = true;
+		switchboxPositionX = event.offsetX + NewBranchButton!.offsetLeft;
+		switchboxPositionY = event.offsetY + NewBranchButton!.offsetTop;
+
 		if (currentNodeIndex == null) {
 			currentNodeIndex = newNodeArray.length;
 			newNodeArray.push({id: null,
@@ -87,18 +98,22 @@
 	{#if nodeData.state == NodeState.moving}
 	<p>Click the left mouse button to place the node</p>
 	{:else if nodeData.state == NodeState.editing}
-	<button id="new_branch_button" onclick={submitNode}>Submit</button>
+	<button onclick={submitNode}>Submit</button>
 	{:else}
-	<button id="new_branch_button" onclick={addNode}>New Branch</button>
-
+	<button  onclick={addNode} bind:this={NewBranchButton}>New Branch</button>
+	{#if isSwitchboxOpen == true }
+	<Switchbox x_position={switchboxPositionX} y_position={switchboxPositionY}></Switchbox>
+	{/if}
 	<button onclick={addBookmarks}>Bookmark: {bookmarks}</button>
 	<button onclick={addLikes}>Like: {likes}</button>
 	{/if}
 </div>
+
 <svelte:window onclick={onClick}/>
 
 <style>
 	.node-actions-container {
+		position: relative;
 		display: flex;
 
 		justify-content: space-between;

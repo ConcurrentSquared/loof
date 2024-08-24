@@ -1,5 +1,6 @@
 <script lang="ts" context="module">
     import type { RecordModel } from "pocketbase";
+	import PocketBase from "pocketbase"
 
 	export enum NodeState {
 		moving,
@@ -50,5 +51,43 @@
 				text: databaseRecord.text
 			}
 		}
+	
+	export function toDatabase(node: NodeData): any {
+		return {
+				author: node.authorId,
+				previous_node: node.previousNodeId,
+
+				x_position: node.x,
+				y_position: node.y,
+
+				text: node.text
+			}
+	}
+
+	export async function checkForUserAuthorship(node: NodeData, pocketbase: PocketBase): Promise<boolean> {
+		let authorRecord = await pocketbase.collection('authors').getOne(node.authorId);
+
+		if (authorRecord.id != null) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	export async function getDisplayUsername(node: NodeData, pocketbase: PocketBase): Promise<string | null> {
+		let authorRecord = await pocketbase.collection('authors').getOne(node.authorId);
+
+		if (authorRecord.id != null) {
+			if (authorRecord.type == "human") {
+				let userRecord = await pocketbase.collection('users').getOne(authorRecord.authorId); 
+				return userRecord.username;
+			} else {
+				let userRecord = await pocketbase.collection('robots').getOne(authorRecord.authorId); 
+				return userRecord.name;
+			}
+		} else {
+			return null;
+		}
+	}
 
 </script>

@@ -46,7 +46,7 @@
 		width: 400px;
 		height: 200px;
 
-		overflow: hidden;
+		overflow: visible;
 
 		border-radius: 2.5px;
 	}
