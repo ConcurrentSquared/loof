@@ -27,7 +27,7 @@
 </script>
 
 <div class="node" style="top: {nodeData.y!.toString()}px; left: {nodeData.x!.toString()}px">
-	<textarea class="node-text-area" inert={!isEditable} bind:value={currentText}></textarea>
+	<textarea class="node-text-area" readonly={!isEditable} bind:value={currentText}></textarea>
 	<NodeActions bookmarks=0 likes=0 nodeData={nodeData} text={currentText} bind:newNodeArray={newNodeArray}></NodeActions>
 </div>
 
