@@ -31,8 +31,8 @@ func main() {
 
 	viper.SetConfigFile(".env")
 	viper.AddConfigPath(".")
-	//viper.SetEnvPrefix("LOOF_SETTINGS_")
-	//viper.AutomaticEnv()
+	viper.SetEnvPrefix("LOOF_SETTINGS_")
+	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
 		panic(err)
@@ -73,8 +73,7 @@ func main() {
 				conn.SubscribeMessages(func(sse sse.Event) {
 					print(responseTokens)
 
-					if sse.Data == "[DONE]" { // OpenRouter stream completion message
-					} else {
+					if !(sse.Data == "[DONE]") { // OpenRouter stream completion message
 						var openRouterResponse OpenRouterResponse
 						err = json.Unmarshal([]byte(sse.Data), &openRouterResponse)
 						if err != nil {
