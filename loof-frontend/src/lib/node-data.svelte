@@ -68,7 +68,7 @@
 		if (authorId == null) {
 			return false;
 		} else {
-			let authorRecord = await pocketbase.collection('authors').getFirstListItem('author_id?="' + authorId + '"&&' + 'origin="user"')
+			let authorRecord = await pocketbase.collection('authors').getFirstListItem('author_id?="' + authorId + '"&&' + 'origin="human"')
 									.catch(err => {if ((err instanceof ClientResponseError) && (err.status) == 404) { return null }});
 				
 

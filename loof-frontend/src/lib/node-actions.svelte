@@ -36,13 +36,16 @@
 		}
 	}
 	
-	async function addNode() {
+	async function addHumanNode() {
 		isSwitchboxOpen = false;
 
 		if (pocketbase.authStore.model != null) {
-			if ((await checkIfUserIsAuthor(pocketbase.authStore.model?.id, pocketbase) == false) && (pocketbase.authStore.model != null)) {
+			let record = await pocketbase.collection('authors').getFirstListItem('author_id?="' + pocketbase.authStore.model.id + '"&&' + 'origin="human"')
+							   .catch(err => {return null})
+
+			if ((await checkIfUserIsAuthor(pocketbase.authStore.model.id, pocketbase) == false) && (pocketbase.authStore.model != null)) {
 				console.log(pocketbase.authStore.model)
-				let record = pocketbase.collection('authors').create({ "author_id": pocketbase.authStore.model?.id, "origin": "human"})
+				record = await pocketbase.collection('authors').create({ "author_id": pocketbase.authStore.model.id, "origin": "human"})
 			}
 
 			if (currentNodeIndex == null) {
@@ -51,7 +54,31 @@
 
 												state: NodeState.moving,
 
-												authorId: "test",
+												authorId: (record?.id ?? "test"),
+												previousNodeId: nodeData.id!,
+
+												x: 0,
+												y: 0,
+
+												text: ""});
+
+				canStopMoving = false;
+				debounceTimeout = setTimeout(endDebounce, 400);
+			}
+		}
+	}
+
+	async function addAINode() {
+		isSwitchboxOpen = false;
+
+		if (pocketbase.authStore.model != null) {
+			if (currentNodeIndex == null) {
+				currentNodeIndex = newNodeArray.length;
+				newNodeArray.push({id: null,
+
+												state: NodeState.moving,
+
+												authorId: "lh485oxdij1oyoa", // TODO: Change
 												previousNodeId: nodeData.id!,
 
 												x: 0,
@@ -113,7 +140,7 @@
 	{:else}
 	<button  onclick={openSwitchbox} bind:this={NewBranchButton}>New Branch</button>
 	{#if isSwitchboxOpen == true }
-	<Switchbox x_position={switchboxPositionX} y_position={switchboxPositionY} on_write_selection={addNode} on_generate_selection={addNode}></Switchbox>
+	<Switchbox x_position={switchboxPositionX} y_position={switchboxPositionY} on_write_selection={addHumanNode} on_generate_selection={addAINode}></Switchbox>
 	{/if}
 	<button onclick={addBookmarks}>Bookmark: {bookmarks}</button>
 	<button onclick={addLikes}>Like: {likes}</button>
