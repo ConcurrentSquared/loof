@@ -12,9 +12,20 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/daos"
+	"github.com/pocketbase/pocketbase/models"
 	"github.com/spf13/viper"
 	"github.com/tmaxmax/go-sse"
 )
+
+type OpenRouterRequest struct {
+	Model string `json:"model"`
+
+	Prompt string `json:"prompt"`
+
+	MaxTokens int  `json:"max_tokens"`
+	Streaming bool `json:"stream"`
+}
 
 type OpenRouterResponse struct {
 	Choices []OpenRouterNonChatData `json:"choices"`
@@ -23,6 +34,20 @@ type OpenRouterResponse struct {
 // Non-chat streaming data uses the same payloads as regular non-chat data
 type OpenRouterNonChatData struct {
 	Text string `json:"text"`
+}
+
+func ExpandText(array *[]string, currentRecord *models.Record, database *daos.Dao) {
+	*array = append(*array, currentRecord.GetString("text"))
+
+	previousNodeId := currentRecord.GetString("previous_node")
+	if previousNodeId != "" {
+		previous_node, err := database.FindRecordById("nodes", currentRecord.GetString("previous_node"))
+		if err != nil {
+			panic(err)
+		}
+
+		ExpandText(array, previous_node, database)
+	}
 }
 
 func main() {
@@ -46,6 +71,14 @@ func main() {
 	})
 
 	app.OnRecordAfterCreateRequest("nodes").Add(func(e *core.RecordCreateEvent) error {
+		nodeTextList := []string{}
+		ExpandText(&nodeTextList, e.Record, app.Dao())
+
+		prompt := ""
+		for index := len(nodeTextList) - 1; index >= 0; index-- {
+			prompt += nodeTextList[index]
+		}
+
 		databaseRecord, err := app.Dao().FindRecordById("nodes", e.Record.Id)
 		if err != nil {
 			panic(err)
@@ -59,7 +92,13 @@ func main() {
 			}
 
 			if author.GetString("origin") == "robot" {
-				jsonData := []byte(`{"model": "meta-llama/llama-3.1-8b-instruct:free", "prompt": "What is the meaning of bingo?!?!?", "max_tokens": 128, "stream": true}`)
+				openRouterRequest := OpenRouterRequest{Model: "meta-llama/llama-3.1-8b-instruct:free", Prompt: prompt, MaxTokens: 128, Streaming: true}
+
+				jsonData, err := json.Marshal(openRouterRequest)
+				if err != nil {
+					return err
+				}
+
 				req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
 				if err != nil {
 					panic(err)
@@ -71,8 +110,6 @@ func main() {
 				responseTokens := ""
 				conn := streamingClient.NewConnection(req)
 				conn.SubscribeMessages(func(sse sse.Event) {
-					print(responseTokens)
-
 					if !(sse.Data == "[DONE]") { // OpenRouter stream completion message
 						var openRouterResponse OpenRouterResponse
 						err = json.Unmarshal([]byte(sse.Data), &openRouterResponse)
