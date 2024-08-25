@@ -1,8 +1,10 @@
 <script lang="ts">
+	import PocketBase from "pocketbase"
+
     import NodeActions from "./node-actions.svelte";
     import { NodeState, type NodeData } from "./node-data.svelte";
 
-	let { nodeData = {id: null,
+	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')), nodeData = {id: null,
 
 					state: NodeState.moving,
 
@@ -12,7 +14,7 @@
 					x: 0,
 					y: 0,
 
-					text: ""}, newNodeArray=$bindable([]) }: { nodeData: NodeData, newNodeArray: Array<NodeData> } = $props();
+					text: ""}, newNodeArray=$bindable([]) }: { pocketbase: PocketBase, nodeData: NodeData, newNodeArray: Array<NodeData> } = $props();
 
 	function checkEditable(nodeData: NodeData): boolean {
 		switch (nodeData.state) {
@@ -28,7 +30,7 @@
 
 <div class="node" style="top: {nodeData.y!.toString()}px; left: {nodeData.x!.toString()}px">
 	<textarea class="node-text-area" readonly={!isEditable} bind:value={currentText}></textarea>
-	<NodeActions bookmarks=0 likes=0 nodeData={nodeData} text={currentText} bind:newNodeArray={newNodeArray}></NodeActions>
+	<NodeActions bind:pocketbase={pocketbase} bookmarks=0 likes=0 nodeData={nodeData} text={currentText} bind:newNodeArray={newNodeArray}></NodeActions>
 </div>
 
 <style>

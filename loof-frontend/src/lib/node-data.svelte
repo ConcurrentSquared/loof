@@ -1,6 +1,6 @@
 <script lang="ts" context="module">
     import type { RecordModel } from "pocketbase";
-	import PocketBase from "pocketbase"
+	import PocketBase, { ClientResponseError } from "pocketbase"
 
 	export enum NodeState {
 		moving,
@@ -64,14 +64,21 @@
 			}
 	}
 
-	export async function checkForUserAuthorship(node: NodeData, pocketbase: PocketBase): Promise<boolean> {
-		let authorRecord = await pocketbase.collection('authors').getOne(node.authorId);
-
-		if (authorRecord.id != null) {
-			return true;
-		} else {
+	export async function checkIfUserIsAuthor(authorId: string | null, pocketbase: PocketBase): Promise<boolean> {
+		if (authorId == null) {
 			return false;
+		} else {
+			let authorRecord = await pocketbase.collection('authors').getFirstListItem('author_id?="' + authorId + '"&&' + 'origin="user"')
+									.catch(err => {if ((err instanceof ClientResponseError) && (err.status) == 404) { return null }});
+				
+
+			if (authorRecord?.id != null) {
+				return true;
+			} else {
+				return false;
+			}
 		}
+		
 	}
 
 	export async function getDisplayUsername(node: NodeData, pocketbase: PocketBase): Promise<string | null> {

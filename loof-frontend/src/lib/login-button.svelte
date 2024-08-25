@@ -1,11 +1,9 @@
 <script lang="ts">
-	import PocketBase from 'pocketbase';
-	import type { RecordAuthResponse, RecordModel } from 'pocketbase';
+	import PocketBase, { type RecordAuthResponse, type RecordModel } from 'pocketbase';
 
-	let { authData = null }: { authData: RecordAuthResponse<RecordModel> | null } = $props();
+	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')) }: { pocketbase: PocketBase } = $props();
 
-	let pocketbase = $state(new PocketBase('http://127.0.0.1:8090'));
-
+	let authData: RecordAuthResponse<RecordModel> | null = $state(null)
 	async function login() {
 		authData = await pocketbase.collection('users').authWithOAuth2({ provider: 'google' });
 	}

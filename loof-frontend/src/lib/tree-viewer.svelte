@@ -18,7 +18,7 @@
 
 	let nodes: NodeData[] = $state([]);
 
-	let authData: RecordAuthResponse<RecordModel> | null = $state(null);
+	let pocketbase = $state(new PocketBase('http://127.0.0.1:8090'))
 
 	let inConstructionNodes: NodeData[] = $state([]);
 	
@@ -155,14 +155,14 @@
 
 <div id="tree-container" style="top: {yOffset}px; left: {xOffset}px">
 	{#each nodes as node}
-		<Node nodeData={node} bind:newNodeArray={inConstructionNodes}></Node>
+		<Node bind:pocketbase={pocketbase} nodeData={node} bind:newNodeArray={inConstructionNodes}></Node>
 	{/each}
 	{#each inConstructionNodes as constructionNode}
-		<Node nodeData={constructionNode} bind:newNodeArray={inConstructionNodes}></Node>
+		<Node bind:pocketbase={pocketbase} nodeData={constructionNode} bind:newNodeArray={inConstructionNodes}></Node>
 	{/each}
 </div>
 <canvas id="tree-background"></canvas>
-<LoginButton authData={authData}></LoginButton>
+<LoginButton bind:pocketbase={pocketbase}></LoginButton>
 
 <style>
 	#tree-container {

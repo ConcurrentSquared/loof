@@ -3,11 +3,11 @@
     import Node from './node.svelte';
     import { mount } from 'svelte';
 
-	import { NodeState, toDatabase, type NodeData } from './node-data.svelte'
+	import { checkIfUserIsAuthor, NodeState, toDatabase, type NodeData } from './node-data.svelte'
     import Switchbox from './switchbox.svelte';
 
-	let { bookmarks = "0", likes = "0", nodeData={id: null,
-
+	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')), bookmarks = "0", likes = "0", nodeData={id: null,
+												
 												state: NodeState.moving,
 
 												authorId: "test",
@@ -16,7 +16,7 @@
 												x: 0,
 												y: 0,
 
-												text: ""}, text="", newNodeArray=$bindable([]) }: { bookmarks: string, likes: string, nodeData: NodeData, text: string, newNodeArray: Array<NodeData> } = $props();
+												text: ""}, text="", newNodeArray=$bindable([]) }: { pocketbase: PocketBase, bookmarks: string, likes: string, nodeData: NodeData, text: string, newNodeArray: Array<NodeData> } = $props();
 	let currentNodeIndex: number | null = $state(null);
 	let debounceTimeout: number | null = $state(null);
 
@@ -39,29 +39,34 @@
 	async function addNode() {
 		isSwitchboxOpen = false;
 
-		if (currentNodeIndex == null) {
-			currentNodeIndex = newNodeArray.length;
-			newNodeArray.push({id: null,
+		if (pocketbase.authStore.model != null) {
+			if ((await checkIfUserIsAuthor(pocketbase.authStore.model?.id, pocketbase) == false) && (pocketbase.authStore.model != null)) {
+				console.log(pocketbase.authStore.model)
+				let record = pocketbase.collection('authors').create({ "author_id": pocketbase.authStore.model?.id, "origin": "human"})
+			}
 
-											state: NodeState.moving,
+			if (currentNodeIndex == null) {
+				currentNodeIndex = newNodeArray.length;
+				newNodeArray.push({id: null,
 
-											authorId: "test",
-											previousNodeId: nodeData.id!,
+												state: NodeState.moving,
 
-											x: 0,
-											y: 0,
+												authorId: "test",
+												previousNodeId: nodeData.id!,
 
-											text: ""});
+												x: 0,
+												y: 0,
 
-			canStopMoving = false;
-			debounceTimeout = setTimeout(endDebounce, 400);
+												text: ""});
+
+				canStopMoving = false;
+				debounceTimeout = setTimeout(endDebounce, 400);
+			}
 		}
 	}
 
 	// NOTE: This function is called from the **new node**; do not use newNodeArray or currentNodeIndex to access the new node's data (because you are actually accessing the 'new new node's' data, which doesn't exist)
 	async function submitNode() {
-		let pocketbase = new PocketBase('http://127.0.0.1:8090');
-		nodeData.authorId = "lh485oxdij1oyoa" // todo: replace
 		nodeData.text = text;
 
 		await pocketbase.collection('nodes').create(toDatabase(nodeData));
@@ -76,16 +81,12 @@
 	}
 
 	async function addBookmarks() {
-		let pocketbase = new PocketBase('http://127.0.0.1:8090');
-
 		let oldNodeData = await pocketbase.collection('nodes').getOne(nodeData.id!, {});
 		let newNodeData = await pocketbase.collection('nodes').update(nodeData.id!, {"bookmarks": (oldNodeData.bookmarks + 1) });
 		bookmarks = newNodeData.bookmarks;
 	}
 
 	async function addLikes() {
-		let pocketbase = new PocketBase('http://127.0.0.1:8090');
-
 		let oldNodeData = await pocketbase.collection('nodes').getOne(nodeData.id!, {});
 		let newNodeData = await pocketbase.collection('nodes').update(nodeData.id!, {"likes": (oldNodeData.likes + 1) });
 		likes = newNodeData.likes;
