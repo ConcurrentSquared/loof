@@ -28,10 +28,16 @@
 
 	let NewBranchButton: HTMLElement | null = $state(null);
 
-	async function addNode(event: MouseEvent) {
-		isSwitchboxOpen = true;
-		switchboxPositionX = event.offsetX + NewBranchButton!.offsetLeft;
-		switchboxPositionY = event.offsetY + NewBranchButton!.offsetTop;
+	async function openSwitchbox(event: MouseEvent) {
+		if (currentNodeIndex == null) {
+			isSwitchboxOpen = true;
+			switchboxPositionX = event.offsetX + NewBranchButton!.offsetLeft;
+			switchboxPositionY = event.offsetY + NewBranchButton!.offsetTop;
+		}
+	}
+	
+	async function addNode() {
+		isSwitchboxOpen = false;
 
 		if (currentNodeIndex == null) {
 			currentNodeIndex = newNodeArray.length;
@@ -85,11 +91,15 @@
 		likes = newNodeData.likes;
 	}
 
-	async function onClick(event: MouseEvent) {
+	async function onMouseDown(event: MouseEvent) {
 		if ((currentNodeIndex != null) && (canStopMoving == true)) {
 			newNodeArray[currentNodeIndex].state = NodeState.editing;
 
 			currentNodeIndex = null;
+		}
+
+		if ((isSwitchboxOpen == true) && (event.target == document.getElementById("tree-background"))) {
+			isSwitchboxOpen = false;
 		}
 	}
 </script>
@@ -100,16 +110,16 @@
 	{:else if nodeData.state == NodeState.editing}
 	<button onclick={submitNode}>Submit</button>
 	{:else}
-	<button  onclick={addNode} bind:this={NewBranchButton}>New Branch</button>
+	<button  onclick={openSwitchbox} bind:this={NewBranchButton}>New Branch</button>
 	{#if isSwitchboxOpen == true }
-	<Switchbox x_position={switchboxPositionX} y_position={switchboxPositionY}></Switchbox>
+	<Switchbox x_position={switchboxPositionX} y_position={switchboxPositionY} on_write_selection={addNode} on_generate_selection={addNode}></Switchbox>
 	{/if}
 	<button onclick={addBookmarks}>Bookmark: {bookmarks}</button>
 	<button onclick={addLikes}>Like: {likes}</button>
 	{/if}
 </div>
 
-<svelte:window onclick={onClick}/>
+<svelte:window on:mousedown={onMouseDown}/>
 
 <style>
 	.node-actions-container {
