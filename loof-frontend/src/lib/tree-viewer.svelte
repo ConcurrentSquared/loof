@@ -20,8 +20,6 @@
 
 	let pocketbase = $state(new PocketBase('http://127.0.0.1:8090'))
 
-	let inConstructionNodes: NodeData[] = $state([]);
-	
 	function drawArrow(startX: number, startY: number, endX: number, endY: number, ctx: CanvasRenderingContext2D) {
 		ctx.beginPath();
 
@@ -70,8 +68,9 @@
 
 		pocketbase.collection('nodes').subscribe('*', function (event) {
 			if (event.action == "update") {
-				inConstructionNodes.forEach(node => {
-					if ((node.fromRobot == true) && (node.isLocal == true)) { // && (nodeRecord.id == e.record.id)
+				nodes.forEach(node => {
+					if ((node.fromRobot == true)) { // && (nodeRecord.id == e.record.id)
+						console.log("also here")
 						node.text = event.record.text
 					}
 				})
@@ -102,8 +101,8 @@
 				localMousePositionX = event.clientX - 200;
 				localMousePositionY = event.clientY - 100;
 				
-				inConstructionNodes.forEach(node => {
-					if (node.state == NodeState.moving) {
+				nodes.forEach(node => {
+					if ((node.state == NodeState.moving) && (node.isLocal == true)) {
 						node.x = mousePositionX;
 						node.y = mousePositionY;
 					}
@@ -149,26 +148,13 @@
 					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, (node.x! + 200) + xOffset, node.y! + yOffset, ctx);
 				}
 			});
-
-			inConstructionNodes.forEach(node => {
-				let previous_node = nodes.find((databaseNode => (databaseNode.id == node.previousNodeId)));
-				if (previous_node != null) {
-					let previousNodeXPosition = previous_node.x! + 200;
-					let previousNodeYPosition = previous_node.y! + 200;
-
-					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, ((node.x ?? mousePositionX) + 200) + xOffset, (node.y ?? mousePositionY) + yOffset, ctx);
-				}
-			})
 		}
 	})
 </script>
 
 <div id="tree-container" style="top: {yOffset}px; left: {xOffset}px">
 	{#each nodes as node}
-		<Node bind:pocketbase={pocketbase} nodeData={node} bind:newNodeArray={inConstructionNodes}></Node>
-	{/each}
-	{#each inConstructionNodes as constructionNode}
-		<Node bind:pocketbase={pocketbase} nodeData={constructionNode} bind:newNodeArray={inConstructionNodes}></Node>
+		<Node bind:pocketbase={pocketbase} nodeData={node} bind:newNodeArray={nodes}></Node>
 	{/each}
 </div>
 <canvas id="tree-background"></canvas>
