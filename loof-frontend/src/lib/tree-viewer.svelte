@@ -67,6 +67,16 @@
 		nodeRecords.forEach(nodeRecord => {
 			nodes = [...nodes, fromDatabase(nodeRecord)];
 		});
+
+		pocketbase.collection('nodes').subscribe('*', function (event) {
+			if (event.action == "update") {
+				inConstructionNodes.forEach(node => {
+					if ((node.fromRobot == true) && (node.isLocal == true)) { // && (nodeRecord.id == e.record.id)
+						node.text = event.record.text
+					}
+				})
+			}
+		}, {});
 		
 		if((treeContainerDiv != null) && (treeBackground != null)) {
 			treeContainerDiv.style.left = xOffset.toString() + "px";

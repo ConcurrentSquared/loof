@@ -9,6 +9,8 @@
 	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')), bookmarks = "0", likes = "0", nodeData={id: null,
 												
 												state: NodeState.moving,
+												isLocal: true,
+												fromRobot: false,
 
 												authorId: "test",
 												previousNodeId: "",
@@ -41,26 +43,23 @@
 
 		if (pocketbase.authStore.model != null) {
 			let record = await pocketbase.collection('authors').getFirstListItem('author_id?="' + pocketbase.authStore.model.id + '"&&' + 'origin="human"')
-							   .catch(err => {return null})
-
-			if ((await checkIfUserIsAuthor(pocketbase.authStore.model.id, pocketbase) == false) && (pocketbase.authStore.model != null)) {
-				console.log(pocketbase.authStore.model)
-				record = await pocketbase.collection('authors').create({ "author_id": pocketbase.authStore.model.id, "origin": "human"})
-			}
+							   .catch(err => {return pocketbase.collection('authors').create({ "author_id": pocketbase.authStore.model!.id, "origin": "human"})})
 
 			if (currentNodeIndex == null) {
 				currentNodeIndex = newNodeArray.length;
 				newNodeArray.push({id: null,
 
-												state: NodeState.moving,
+								state: NodeState.moving,
+								isLocal: true,
+								fromRobot: false,
 
-												authorId: (record?.id ?? "test"),
-												previousNodeId: nodeData.id!,
+								authorId: record.id,
+								previousNodeId: nodeData.id!,
 
-												x: 0,
-												y: 0,
+								x: 0,
+								y: 0,
 
-												text: ""});
+								text: ""});
 
 				canStopMoving = false;
 				debounceTimeout = setTimeout(endDebounce, 400);
@@ -76,15 +75,17 @@
 				currentNodeIndex = newNodeArray.length;
 				newNodeArray.push({id: null,
 
-												state: NodeState.moving,
+									state: NodeState.moving,
+									isLocal: true,
+									fromRobot: true,
 
-												authorId: "lh485oxdij1oyoa", // TODO: Change
-												previousNodeId: nodeData.id!,
+									authorId: "lh485oxdij1oyoa", // TODO: Change
+									previousNodeId: nodeData.id!,
 
-												x: 0,
-												y: 0,
+									x: 0,
+									y: 0,
 
-												text: ""});
+									text: ""});
 
 				canStopMoving = false;
 				debounceTimeout = setTimeout(endDebounce, 400);
@@ -96,11 +97,12 @@
 	async function submitNode() {
 		nodeData.text = text;
 
-		await pocketbase.collection('nodes').create(toDatabase(nodeData));
-
+		let record = await pocketbase.collection('nodes').create(toDatabase(nodeData));
+		console.log("here")
+		nodeData.id = record.id;
 		nodeData.state = NodeState.complete;
 
-		currentNodeIndex = null;
+		console.log(nodeData)
 	}
 
 	async function endDebounce() {
@@ -169,6 +171,16 @@
 		border: 0;
 
   		padding: 0;
+		padding-left: 5px;
+		padding-right: 5px;
+
+		height: 100%;
+	}
+
+	p {
+		font: 1em sans-serif;
+
+		padding: 0;
 		padding-left: 5px;
 		padding-right: 5px;
 

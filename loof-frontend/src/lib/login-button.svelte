@@ -3,22 +3,20 @@
 
 	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')) }: { pocketbase: PocketBase } = $props();
 
-	let authData: RecordAuthResponse<RecordModel> | null = $state(null)
 	async function login() {
-		authData = await pocketbase.collection('users').authWithOAuth2({ provider: 'google' });
+		await pocketbase.collection('users').authWithOAuth2({ provider: 'google' });
 	}
 
 	async function signout() {
 		pocketbase.authStore.clear();
-		authData = null;
 	}
 </script>
 
 <div class="node-actions-container">
-	{#if authData == null}
+	{#if pocketbase.authStore.model == null}
 	<button onclick={login}>Login</button>
 	{:else}
-	<button onclick={signout}>Sign out of {authData.record.username}</button>
+	<button onclick={signout}>Sign out of {pocketbase.authStore.model.username}</button>
 	{/if}
 </div>
 

@@ -12,6 +12,8 @@
 		id: string | null;
 
 		state: NodeState;
+		isLocal: boolean;
+		fromRobot: boolean;
 
 		authorId: string;
 		previousNodeId: string;
@@ -25,6 +27,8 @@
 			this.id = null;
 
 			this.state = NodeState.moving;
+			this.isLocal = true;
+			this.fromRobot = false;
 
 			this.authorId = authorId;
 			this.previousNodeId = previousNodeId;
@@ -41,6 +45,8 @@
 				id: databaseRecord.id,
 
 				state: NodeState.complete,
+				isLocal: false,
+				fromRobot: false,
 
 				authorId: databaseRecord.author,
 				previousNodeId: databaseRecord.previous_node,

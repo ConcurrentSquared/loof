@@ -7,6 +7,8 @@
 	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')), nodeData = {id: null,
 
 					state: NodeState.moving,
+					isLocal: true,
+					fromRobot: false,
 
 					authorId: "test",
 					previousNodeId: "",
@@ -25,11 +27,11 @@
 		}
 	}
 	let isEditable = $derived(checkEditable(nodeData));
-	let currentText = $state(nodeData.text);
+	let currentText = $derived(nodeData.text);
 </script>
 
 <div class="node" style="top: {nodeData.y!.toString()}px; left: {nodeData.x!.toString()}px">
-	<textarea class="node-text-area" readonly={!isEditable} bind:value={currentText}></textarea>
+	<textarea class="node-text-area" readonly={!isEditable} value={currentText}></textarea>
 	<NodeActions bind:pocketbase={pocketbase} bookmarks=0 likes=0 nodeData={nodeData} text={currentText} bind:newNodeArray={newNodeArray}></NodeActions>
 </div>
 

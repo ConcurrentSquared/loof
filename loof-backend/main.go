@@ -92,9 +92,10 @@ func main() {
 			}
 
 			if author.GetString("origin") == "robot" {
-				openRouterRequest := OpenRouterRequest{Model: "meta-llama/llama-3.1-8b-instruct:free", Prompt: prompt, MaxTokens: 128, Streaming: true}
+				openRouterRequest := OpenRouterRequest{Model: "meta-llama/llama-3.1-405b", Prompt: prompt, MaxTokens: 128, Streaming: true}
 
 				jsonData, err := json.Marshal(openRouterRequest)
+				println(string(jsonData))
 				if err != nil {
 					return err
 				}
@@ -107,10 +108,15 @@ func main() {
 				req.Header.Set("Content-Type", "application/json")
 				req.Header.Set("Authorization", ("Bearer " + apiKey))
 
+				req.Header.Set("HTTP-Referer", "https://www.concurrentsquared.com/projects/loof")
+				req.Header.Set("X-Title", "Loof")
+
 				responseTokens := ""
 				conn := streamingClient.NewConnection(req)
 				conn.SubscribeMessages(func(sse sse.Event) {
-					if !(sse.Data == "[DONE]") { // OpenRouter stream completion message
+					println(sse.Data)
+					println(sse.Type)
+					if (sse.Data != "[DONE]") && (sse.Data != "") { // OpenRouter stream completion message
 						var openRouterResponse OpenRouterResponse
 						err = json.Unmarshal([]byte(sse.Data), &openRouterResponse)
 						if err != nil {
