@@ -23,6 +23,8 @@ type OpenRouterRequest struct {
 
 	Prompt string `json:"prompt"`
 
+	Transforms []string `json:"transforms"`
+
 	MaxTokens int  `json:"max_tokens"`
 	Streaming bool `json:"stream"`
 }
@@ -70,29 +72,31 @@ func main() {
 		return nil
 	})
 
-	app.OnRecordAfterCreateRequest("nodes").Add(func(e *core.RecordCreateEvent) error {
-		nodeTextList := []string{}
-		ExpandText(&nodeTextList, e.Record, app.Dao())
+	app.OnRecordAfterUpdateRequest("nodes").Add(func(e *core.RecordUpdateEvent) error {
+		println(e.Record.GetString("state"))
+		if e.Record.GetString("state") == "pending" {
+			e.Record.Set("state", "editing")
 
-		prompt := ""
-		for index := len(nodeTextList) - 1; index >= 0; index-- {
-			prompt += nodeTextList[index]
-		}
+			nodeTextList := []string{}
+			ExpandText(&nodeTextList, e.Record, app.Dao())
 
-		databaseRecord, err := app.Dao().FindRecordById("nodes", e.Record.Id)
-		if err != nil {
-			panic(err)
-		}
+			prompt := ""
+			for index := len(nodeTextList) - 1; index >= 0; index-- {
+				prompt += nodeTextList[index]
+			}
 
-		author, err := app.Dao().FindRecordById("authors", e.Record.GetString("author"))
+			databaseRecord, err := app.Dao().FindRecordById("nodes", e.Record.Id)
+			if err != nil {
+				panic(err)
+			}
 
-		if true {
+			author, err := app.Dao().FindRecordById("authors", e.Record.GetString("author"))
 			if err != nil {
 				panic(err)
 			}
 
 			if author.GetString("origin") == "robot" {
-				openRouterRequest := OpenRouterRequest{Model: "meta-llama/llama-3.1-405b", Prompt: prompt, MaxTokens: 128, Streaming: true}
+				openRouterRequest := OpenRouterRequest{Model: "meta-llama/llama-3.1-405b", Prompt: prompt, Transforms: []string{}, MaxTokens: 128, Streaming: true}
 
 				jsonData, err := json.Marshal(openRouterRequest)
 				println(string(jsonData))
@@ -102,7 +106,7 @@ func main() {
 
 				req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
 				if err != nil {
-					panic(err)
+					return err
 				}
 
 				req.Header.Set("Content-Type", "application/json")
@@ -116,7 +120,10 @@ func main() {
 				conn.SubscribeMessages(func(sse sse.Event) {
 					println(sse.Data)
 					println(sse.Type)
-					if (sse.Data != "[DONE]") && (sse.Data != "") { // OpenRouter stream completion message
+					if sse.Data == "[DONE]" {
+						databaseRecord.Set("state", "completed")
+						app.Dao().SaveRecord(databaseRecord)
+					} else if sse.Data != "" { // OpenRouter stream completion message
 						var openRouterResponse OpenRouterResponse
 						err = json.Unmarshal([]byte(sse.Data), &openRouterResponse)
 						if err != nil {
@@ -130,12 +137,12 @@ func main() {
 				})
 
 				if err = conn.Connect(); !errors.Is(err, io.EOF) {
-					panic(err)
+					return err
 				}
 			}
 		}
 
-		return err
+		return nil
 	})
 
 	if err := app.Start(); err != nil {
