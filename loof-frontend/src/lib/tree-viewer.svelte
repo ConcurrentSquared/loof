@@ -7,16 +7,20 @@
     import LoginButton from './login-button.svelte';
 	import { fromDatabase, type NodeData, NodeState, toDatabase } from './node-data.svelte'
 
+	let xTargetOffset = $state(0);
+	let yTargetOffset = $state(0);
+
 	let xOffset = $state(0);
 	let yOffset = $state(0);
 
+	let targetZoom = $state(1);
 	let zoom = $state(1);
 
 	let localMousePositionX = $state(0);
 	let localMousePositionY = $state(0);
 
-	let mousePositionX = $derived((((localMousePositionX - xOffset) * zoom)));
-	let mousePositionY = $derived((((localMousePositionY - yOffset) * zoom)));
+	let mousePositionX = $derived((((localMousePositionX - xOffset) * targetZoom)));
+	let mousePositionY = $derived((((localMousePositionY - yOffset) * targetZoom)));
 
 	let nodes: { [id: string]: NodeData }  = $state({});
 
@@ -26,14 +30,14 @@
 	let debounceTimeout: number | null = $state(null)
 	let canStopMoving: boolean = $state(false);
 
-	function drawArrow(startX: number, startY: number, endX: number, endY: number, ctx: CanvasRenderingContext2D, zoom: number) {
+	function drawArrow(startX: number, startY: number, endX: number, endY: number, ctx: CanvasRenderingContext2D, targetZoom: number) {
 		ctx.beginPath();
 
-		let zoomedStartX = startX * zoom;
-		let zoomedStartY = startY * zoom;
+		let zoomedStartX = startX * targetZoom;
+		let zoomedStartY = startY * targetZoom;
 
-		let zoomedEndX = endX * zoom;
-		let zoomedEndY = endY * zoom;
+		let zoomedEndX = endX * targetZoom;
+		let zoomedEndY = endY * targetZoom;
 
 		ctx.moveTo(zoomedStartX, zoomedStartY);
 		ctx.lineTo(zoomedEndX, zoomedEndY);
@@ -43,11 +47,11 @@
 		let leftRads = lineRads - (30 * (Math.PI / 180));
 		let rightRads = lineRads + (30 * (Math.PI / 180));
 
-		let leftX = (Math.cos(leftRads) * 25 * zoom) + zoomedEndX;
-		let leftY = (Math.sin(leftRads) * 25 * zoom) + zoomedEndY;
+		let leftX = (Math.cos(leftRads) * 25 * targetZoom) + zoomedEndX;
+		let leftY = (Math.sin(leftRads) * 25 * targetZoom) + zoomedEndY;
 
-		let rightX = (Math.cos(rightRads) * 25 * zoom) + zoomedEndX;
-		let rightY = (Math.sin(rightRads) * 25 * zoom) + zoomedEndY;
+		let rightX = (Math.cos(rightRads) * 25 * targetZoom) + zoomedEndX;
+		let rightY = (Math.sin(rightRads) * 25 * targetZoom) + zoomedEndY;
 
 		ctx.lineTo(leftX, leftY);
 		ctx.moveTo(zoomedEndX, zoomedEndY);
@@ -97,34 +101,105 @@
 		}, { expand: "author" });
 		
 		if((treeContainerDiv != null) && (treeBackground != null)) {
+			let panCallbackId: number | null = null;
+			let lastMouseMove: number | null = null;
+
 			treeBackground.addEventListener("mousemove", (event) => {
 				if (dragging && (event.target == event.currentTarget)) {
-					xVelocity = event.screenX - (lastScreenX ?? xOffset);
-					yVelocity = event.screenY - (lastScreenY ?? yOffset);
+					const deltaTime = event.timeStamp - (lastMouseMove ?? event.timeStamp);
 
-					xOffset += xVelocity;
-					yOffset += yVelocity;
+					if ((lastScreenX != null) && (lastScreenY != null) && (deltaTime > 0.001)) {
+						xVelocity = (event.screenX - (lastScreenX)) / deltaTime;
+						yVelocity = (event.screenY - (lastScreenY)) / deltaTime;
 
+						xOffset += (event.screenX - (lastScreenX));
+						yOffset += (event.screenY - (lastScreenY));
+
+						
+					}
+
+					lastMouseMove = event.timeStamp;
 					lastScreenX = event.screenX;
 					lastScreenY = event.screenY;
-
-					xVelocity = 0;
-					yVelocity = 0;
 				}
 			});
 
+			let lastPanFrame: number | null = null;
+
+			function onNewPanFrame(timeStamp: number) {
+				if (dragging == false) {
+					const deltaTime = timeStamp - (lastPanFrame ?? timeStamp);
+
+					const panDeltaX = (xVelocity) * deltaTime;
+					const panDeltaY = (yVelocity) * deltaTime;
+
+					xOffset += panDeltaX * 1;
+					yOffset += panDeltaY * 1;
+					
+					xVelocity *= (1.0 - (0.001 * deltaTime));
+					yVelocity *= (1.0 - (0.001 * deltaTime));
+
+					if ((xVelocity != 0.00) && (yVelocity != 0.00)) {
+						window.requestAnimationFrame(onNewPanFrame);
+
+						lastPanFrame = timeStamp; 
+					} else {
+						lastPanFrame = null;
+						panCallbackId = null;
+					}
+				} else {
+					lastPanFrame = null;
+					panCallbackId = null;
+				}
+			}
+
+			let zoomCallbackId: number | null = null;
+
 			treeBackground.addEventListener("wheel", (event) => {
-				let zoomDelta = event.deltaY * 0.001
-				if ((zoom + zoomDelta) < 0.1) {
-					zoomDelta = Math.max((zoom - 0.1), 0);
-				} else if ((zoom + zoomDelta) > 3) {
-					zoomDelta = Math.max((zoom - 3), 0);
+				let zoomDelta = event.deltaY * 0.001;
+				if ((targetZoom + zoomDelta) < 0.1) {
+					zoomDelta = Math.max((targetZoom - 0.1), 0);
+				} else if ((targetZoom + zoomDelta) > 3) {
+					zoomDelta = Math.max((targetZoom - 3), 0);
 				}
 				
+				//xOffset -= ((localMousePositionX - xOffset) / targetZoom) * zoomDelta;
+				//yOffset -= ((localMousePositionY - yOffset) / targetZoom) * zoomDelta;
+				targetZoom += zoomDelta;
+
+				if (zoomCallbackId == null) {
+					zoomCallbackId = window.requestAnimationFrame(onNewZoomFrame);
+				}
+			});
+
+			let zoomStart: number | null = null;
+			let zoomEnd: number | null = null;
+
+			function onNewZoomFrame(timeStamp: number) {
+				if (zoomStart == null) {
+					zoomStart = timeStamp;
+					zoomEnd = timeStamp + 50;
+				} else if (zoomEnd != null) {
+					zoomEnd += 50;
+				}
+
+				const deltaTime = timeStamp - zoomStart;
+				const requiredZoom = targetZoom - zoom;
+				const zoomDelta = (requiredZoom / (zoomEnd! - zoomStart)) * deltaTime
+
 				xOffset -= ((localMousePositionX - xOffset) / zoom) * zoomDelta;
 				yOffset -= ((localMousePositionY - yOffset) / zoom) * zoomDelta;
 				zoom += zoomDelta;
-			});
+
+				if (zoom != targetZoom) {
+					window.requestAnimationFrame(onNewZoomFrame);
+				} else {
+					zoomStart = null;
+					zoomEnd = null;
+
+					zoomCallbackId = null;
+				}
+			}
 
 			document.addEventListener("mousemove", (event) => {
 				localMousePositionX = event.screenX;
@@ -170,6 +245,15 @@
 
 			treeBackground.addEventListener("mouseup", (event) => { 
 				dragging = false;
+				lastScreenX = null;
+				lastScreenY = null;
+
+				lastMouseMove = null;
+
+				if (panCallbackId == null) {
+					panCallbackId = window.requestAnimationFrame(onNewPanFrame);
+				}
+				
 			});
 
 			treeBackground.addEventListener("mouseleave", (event) => { 
