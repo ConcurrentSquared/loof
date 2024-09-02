@@ -16,7 +16,7 @@
 					x: 0,
 					y: 0,
 
-					text: ""}, newNodeArray=$bindable([]) }: { pocketbase: PocketBase, nodeData: NodeData, newNodeArray: Array<NodeData> } = $props();
+					text: ""}, onNodeSubmission }: { pocketbase: PocketBase, nodeData: NodeData, onNodeSubmission: (node: NodeData) => void } = $props();
 
 	function checkEditable(nodeData: NodeData): boolean {
 		switch (nodeData.state) {
@@ -32,7 +32,7 @@
 
 <div class="node" style="top: {nodeData.y!.toString()}px; left: {nodeData.x!.toString()}px">
 	<textarea class="node-text-area" readonly={!isEditable} value={currentText}></textarea>
-	<NodeActions bind:pocketbase={pocketbase} bookmarks=0 likes=0 nodeData={nodeData} text={currentText} bind:newNodeArray={newNodeArray}></NodeActions>
+	<NodeActions bind:pocketbase={pocketbase} bookmarks=0 likes=0 nodeData={nodeData} text={currentText} onNodeSubmission={onNodeSubmission}></NodeActions>
 </div>
 
 <style>

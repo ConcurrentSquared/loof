@@ -5,7 +5,7 @@
 
 	import Node from './node.svelte';
     import LoginButton from './login-button.svelte';
-	import { fromDatabase, type NodeData, NodeState } from './node-data.svelte'
+	import { fromDatabase, type NodeData, NodeState, toDatabase } from './node-data.svelte'
 
 	let xOffset = $state(0);
 	let yOffset = $state(0);
@@ -16,7 +16,7 @@
 	let mousePositionX = $derived((localMousePositionX - xOffset));
 	let mousePositionY = $derived((localMousePositionY - yOffset));
 
-	let nodes: NodeData[] = $state([]);
+	let nodes: { [id: string]: NodeData }  = $state({});
 
 	let pocketbase = $state(new PocketBase('http://127.0.0.1:8090'))
 
@@ -58,24 +58,30 @@
 		let treeBackground = document.getElementById("tree-background") as HTMLCanvasElement;
 		let ctx = treeBackground.getContext("2d");
 
-		let pb = new PocketBase('http://127.0.0.1:8090');
-
-		let nodeRecords = await pb.collection('nodes').getFullList({});
+		let nodeRecords = await pocketbase.collection('nodes').getFullList({ expand: "author" });
 
 		nodeRecords.forEach(nodeRecord => {
-			nodes = [...nodes, fromDatabase(nodeRecord)];
+			let node = fromDatabase(nodeRecord, false);
+			nodes[node.id!] = node; 
 		});
 
 		pocketbase.collection('nodes').subscribe('*', function (event) {
-			if (event.action == "update") {
-				nodes.forEach(node => {
-					if ((node.fromRobot == true)) { // && (nodeRecord.id == e.record.id)
-						console.log("also here")
-						node.text = event.record.text
+			switch (event.action) {
+				case "create":
+					if (nodes[event.record.id] == null) { 
+						nodes[event.record.id] = fromDatabase(event.record, false);
 					}
-				})
+					break;
+				case "update":
+					if ((nodes[event.record.id]!.isLocal == false) || ((nodes[event.record.id]!.fromRobot == true) && (nodes[event.record.id]!.state != NodeState.moving))) {
+						nodes[event.record.id] = fromDatabase(event.record, nodes[event.record.id]!.isLocal);
+					}
+					break;
+			
+				default:
+					break;
 			}
-		}, {});
+		}, { expand: "author" });
 		
 		if((treeContainerDiv != null) && (treeBackground != null)) {
 			treeContainerDiv.style.left = xOffset.toString() + "px";
@@ -101,12 +107,12 @@
 				localMousePositionX = event.clientX - 200;
 				localMousePositionY = event.clientY - 100;
 				
-				nodes.forEach(node => {
-					if ((node.state == NodeState.moving) && (node.isLocal == true)) {
-						node.x = mousePositionX;
-						node.y = mousePositionY;
+				for (var key in nodes) {
+					if ((nodes[key].state == NodeState.moving) && (nodes[key].isLocal == true)) {
+						nodes[key].x = mousePositionX;
+						nodes[key].y = mousePositionY;
 					}
-				});
+				}
 			})
 
 			treeBackground.addEventListener("mousedown", (event) => { 
@@ -139,22 +145,38 @@
 		ctx?.reset();
 
 		if (ctx != null) {
-			nodes.forEach(node => {
-				let previous_node = nodes.find((databaseNode => (databaseNode.id == node.previousNodeId)));
+			for (var key in nodes) {
+				let previous_node = nodes[nodes[key].previousNodeId]!;
 				if (previous_node != null) {
 					let previousNodeXPosition = previous_node.x! + 200;
 					let previousNodeYPosition = previous_node.y! + 200;
 
-					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, (node.x! + 200) + xOffset, node.y! + yOffset, ctx);
+					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, (nodes[key].x! + 200) + xOffset, nodes[key].y! + yOffset, ctx);
 				}
-			});
+			}
 		}
 	})
+
+	async function onNodeSubmission(node: NodeData) {
+		if (node.isLocal == false) {
+			console.warn("onNodeSubmission's node.isLocal should not be false")
+		}
+
+		let nodeRecord = await pocketbase.collection('nodes').create(toDatabase(node, false));
+		nodes[nodeRecord.id] = fromDatabase(nodeRecord, true);
+		//if (currentNodeIndex == null) {
+		//	currentNodeIndex = newNodeArray.length;
+		//	newNodeArray.push(fromDatabase(nodeRecord, true));
+		//
+		//	canStopMoving = false;
+		//	debounceTimeout = setTimeout(endDebounce, 400);
+		//}
+	}
 </script>
 
 <div id="tree-container" style="top: {yOffset}px; left: {xOffset}px">
-	{#each nodes as node}
-		<Node bind:pocketbase={pocketbase} nodeData={node} bind:newNodeArray={nodes}></Node>
+	{#each Object.entries(nodes) as [_, node]}
+		<Node bind:pocketbase={pocketbase} nodeData={node} onNodeSubmission={onNodeSubmission}></Node>
 	{/each}
 </div>
 <canvas id="tree-background"></canvas>

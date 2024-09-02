@@ -1,9 +1,4 @@
 <script lang="ts">
-	type switchboxCallbacks = {
-		onWriteSelection: () => void,
-		onGenerateSelection: () => void,
-	}	
-
 	let { x_position=0, y_position=0, on_write_selection, on_generate_selection }: { x_position: number, y_position: number, on_write_selection: () => void, on_generate_selection: () => void } = $props();
 </script>
 

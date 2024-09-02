@@ -40,13 +40,43 @@
 		}
 	}
 
-	export function fromDatabase(databaseRecord: RecordModel): NodeData {
+	function convertDatabaseStateToInternalState(dbState: string): NodeState | null {
+		switch (dbState) {
+			case "moving":
+				return NodeState.moving;
+			case "pending":
+				return NodeState.editing;
+			case "editing":
+				return NodeState.editing;
+			case "completed":
+				return NodeState.complete;
+			default:
+				return null;
+		}
+	}
+
+	function convertInternalStateToDatabaseState(state: NodeState, afterPending: boolean): string {
+		switch (state) {
+			case NodeState.moving:
+				return "moving";
+			case NodeState.editing:
+				if (afterPending == true) {
+					return "editing";
+				} else {
+					return "pending";
+				}
+			case NodeState.complete:
+				return "completed";
+		}
+	}
+
+	export function fromDatabase(databaseRecord: RecordModel, isLocal: boolean): NodeData {
 			return {
 				id: databaseRecord.id,
 
-				state: NodeState.complete,
-				isLocal: false,
-				fromRobot: false,
+				state: convertDatabaseStateToInternalState(databaseRecord.state)!,
+				isLocal: isLocal,
+				fromRobot: (databaseRecord.expand!.author.origin == "robot") ? true : false,
 
 				authorId: databaseRecord.author,
 				previousNodeId: databaseRecord.previous_node,
@@ -58,16 +88,22 @@
 			}
 		}
 	
-	export function toDatabase(node: NodeData): any {
-		return {
-				author: node.authorId,
-				previous_node: node.previousNodeId,
+	export function toDatabase(node: NodeData, ignoreState: boolean): any {
+		let incompleteNode: any = {
+			author: node.authorId,
+			previous_node: node.previousNodeId,
 
-				x_position: node.x,
-				y_position: node.y,
+			x_position: node.x,
+			y_position: node.y,
 
-				text: node.text
-			}
+			text: node.text
+		}
+
+		if (ignoreState == false) {
+			incompleteNode.state = convertInternalStateToDatabaseState(node.state, false)
+		}
+
+		return incompleteNode;
 	}
 
 	export async function checkIfUserIsAuthor(authorId: string | null, pocketbase: PocketBase): Promise<boolean> {

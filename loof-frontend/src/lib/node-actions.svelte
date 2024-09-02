@@ -1,9 +1,7 @@
 <script lang="ts">
 	import PocketBase from 'pocketbase';
-    import Node from './node.svelte';
-    import { mount } from 'svelte';
 
-	import { checkIfUserIsAuthor, NodeState, toDatabase, type NodeData } from './node-data.svelte'
+	import { checkIfUserIsAuthor, fromDatabase, NodeState, toDatabase, type NodeData } from './node-data.svelte'
     import Switchbox from './switchbox.svelte';
 
 	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')), bookmarks = "0", likes = "0", nodeData={id: null,
@@ -18,11 +16,11 @@
 												x: 0,
 												y: 0,
 
-												text: ""}, text="", newNodeArray=$bindable([]) }: { pocketbase: PocketBase, bookmarks: string, likes: string, nodeData: NodeData, text: string, newNodeArray: Array<NodeData> } = $props();
-	let currentNodeIndex: number | null = $state(null);
-	let debounceTimeout: number | null = $state(null);
+												text: ""}, text="", onNodeSubmission }: { pocketbase: PocketBase, bookmarks: string, likes: string, nodeData: NodeData, text: string, onNodeSubmission: (node: NodeData) => void } = $props();
+	//let currentNodeIndex: number | null = $state(null);
+	//let debounceTimeout: number | null = $state(null);
 
-	let canStopMoving = $state(false);
+	//let canStopMoving = $state(false);
 
 	let isSwitchboxOpen = $state(false);
 	let switchboxPositionX: number = $state(0);
@@ -31,82 +29,107 @@
 	let NewBranchButton: HTMLElement | null = $state(null);
 
 	async function openSwitchbox(event: MouseEvent) {
-		if (currentNodeIndex == null) {
+	//	if (currentNodeIndex == null) {
 			isSwitchboxOpen = true;
 			switchboxPositionX = event.offsetX + NewBranchButton!.offsetLeft;
 			switchboxPositionY = event.offsetY + NewBranchButton!.offsetTop;
-		}
+	//	}
 	}
 	
 	async function addHumanNode() {
 		isSwitchboxOpen = false;
 
 		if (pocketbase.authStore.model != null) {
-			let record = await pocketbase.collection('authors').getFirstListItem('author_id?="' + pocketbase.authStore.model.id + '"&&' + 'origin="human"')
+			let authorRecord = await pocketbase.collection('authors').getFirstListItem('author_id?="' + pocketbase.authStore.model.id + '"&&' + 'origin="human"')
 							   .catch(err => {return pocketbase.collection('authors').create({ "author_id": pocketbase.authStore.model!.id, "origin": "human"})})
+			
+			let newNodeData: NodeData = {id: null,
+							state: NodeState.moving,
+							isLocal: true,
+							fromRobot: false,
 
-			if (currentNodeIndex == null) {
-				currentNodeIndex = newNodeArray.length;
-				newNodeArray.push({id: null,
+							authorId: authorRecord.id,
+							previousNodeId: nodeData.id!,
+		
+							x: 0,
+							y: 0,
 
-								state: NodeState.moving,
-								isLocal: true,
-								fromRobot: false,
+							text: ""}
+			
+			onNodeSubmission(newNodeData);
 
-								authorId: record.id,
-								previousNodeId: nodeData.id!,
+		//	let nodeRecord = await pocketbase.collection('nodes').create(toDatabase({	id: null,
+		//																				state: NodeState.moving,
+		//																				isLocal: true,
+		//																				fromRobot: false,
+//
+		//																				authorId: authorRecord.id,
+		//																				previousNodeId: nodeData.id!,
+//
+		//																				x: 0,
+		//																				y: 0,
+//
+		//																				text: ""}, false));
+		//	if (currentNodeIndex == null) {
+//				currentNodeIndex = newNodeArray.length;
+		//		newNodeArray.push(fromDatabase(nodeRecord, true));
 
-								x: 0,
-								y: 0,
-
-								text: ""});
-
-				canStopMoving = false;
-				debounceTimeout = setTimeout(endDebounce, 400);
+		//		canStopMoving = false;
+		//		debounceTimeout = setTimeout(endDebounce, 400);
 			}
-		}
+		
 	}
 
 	async function addAINode() {
 		isSwitchboxOpen = false;
 
 		if (pocketbase.authStore.model != null) {
-			if (currentNodeIndex == null) {
-				currentNodeIndex = newNodeArray.length;
-				newNodeArray.push({id: null,
+			//let nodeRecord = await pocketbase.collection('nodes').create(toDatabase({	id: null,
+			//																			state: NodeState.moving,
+			//																			isLocal: true,
+			//																			fromRobot: false,
+//
+			//																			authorId: "lh485oxdij1oyoa",
+			//																			previousNodeId: nodeData.id!,
+//
+			//																			x: 0,
+			//																			y: 0,
+//
+			//																			text: ""}, false));
 
-									state: NodeState.moving,
-									isLocal: true,
-									fromRobot: true,
+			let newNodeData: NodeData = {id: null,
+							state: NodeState.moving,
+							isLocal: true,
+							fromRobot: false,
 
-									authorId: "lh485oxdij1oyoa", // TODO: Change
-									previousNodeId: nodeData.id!,
+							authorId: "lh485oxdij1oyoa",
+							previousNodeId: nodeData.id!,
+		
+							x: 0,
+							y: 0,
 
-									x: 0,
-									y: 0,
-
-									text: ""});
-
-				canStopMoving = false;
-				debounceTimeout = setTimeout(endDebounce, 400);
-			}
+							text: ""}
+			onNodeSubmission(newNodeData);
+			//if (currentNodeIndex == null) {
+			//	currentNodeIndex = newNodeArray.length;
+			//	newNodeArray.push(fromDatabase(nodeRecord, true));
+//
+			//	canStopMoving = false;
+			//	debounceTimeout = setTimeout(endDebounce, 400);
+			//}
 		}
 	}
 
 	// NOTE: This function is called from the **new node**; do not use newNodeArray or currentNodeIndex to access the new node's data (because you are actually accessing the 'new new node's' data, which doesn't exist)
 	async function submitNode() {
 		nodeData.text = text;
-
-		let record = await pocketbase.collection('nodes').create(toDatabase(nodeData));
-		console.log("here")
-		nodeData.id = record.id;
 		nodeData.state = NodeState.complete;
 
-		console.log(nodeData)
+		let record = await pocketbase.collection('nodes').update(nodeData.id!, toDatabase(nodeData, true));
 	}
 
 	async function endDebounce() {
-		canStopMoving = true
+		//canStopMoving = true
 	}
 
 	async function addBookmarks() {
@@ -122,15 +145,16 @@
 	}
 
 	async function onMouseDown(event: MouseEvent) {
-		if ((currentNodeIndex != null) && (canStopMoving == true)) {
-			newNodeArray[currentNodeIndex].state = NodeState.editing;
+		//if ((currentNodeIndex != null) && (canStopMoving == true)) {
+		//	newNodeArray[currentNodeIndex].state = NodeState.editing;
 
-			currentNodeIndex = null;
-		}
+		//	let record = await pocketbase.collection('nodes').update(nodeData.id!, toDatabase(newNodeArray[currentNodeIndex], false));
+		//	currentNodeIndex = null;
+		//}
 
-		if ((isSwitchboxOpen == true) && (event.target == document.getElementById("tree-background"))) {
-			isSwitchboxOpen = false;
-		}
+		//if ((isSwitchboxOpen == true) && (event.target == document.getElementById("tree-background"))) {
+		//	isSwitchboxOpen = false;
+		//}
 	}
 </script>
 
@@ -178,12 +202,12 @@
 	}
 
 	p {
-		font: 1em sans-serif;
+		font: 0.5em sans-serif;
 
 		padding: 0;
 		padding-left: 5px;
 		padding-right: 5px;
 
-		height: 100%;
+		margin: 0;
 	}
 </style>
