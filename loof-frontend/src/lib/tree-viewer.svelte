@@ -18,7 +18,11 @@
 
 	let nodes: { [id: string]: NodeData }  = $state({});
 
+	let placingNodeId: string | null = $state(null);
 	let pocketbase = $state(new PocketBase('http://127.0.0.1:8090'))
+
+	let debounceTimeout: number | null = $state(null)
+	let canStopMoving: boolean = $state(false);
 
 	function drawArrow(startX: number, startY: number, endX: number, endY: number, ctx: CanvasRenderingContext2D) {
 		ctx.beginPath();
@@ -74,7 +78,8 @@
 					break;
 				case "update":
 					if ((nodes[event.record.id]!.isLocal == false) || ((nodes[event.record.id]!.fromRobot == true) && (nodes[event.record.id]!.state != NodeState.moving))) {
-						nodes[event.record.id] = fromDatabase(event.record, nodes[event.record.id]!.isLocal);
+						let newNodeData = fromDatabase(event.record, nodes[event.record.id]!.isLocal);
+						nodes[event.record.id] = newNodeData;
 					}
 					break;
 			
@@ -111,6 +116,27 @@
 					if ((nodes[key].state == NodeState.moving) && (nodes[key].isLocal == true)) {
 						nodes[key].x = mousePositionX;
 						nodes[key].y = mousePositionY;
+					}
+				}
+			});
+
+			document.addEventListener("mousedown", async (event) => {
+				if ((placingNodeId != null) && (canStopMoving == true)) {
+					try {
+						nodes[placingNodeId].state = NodeState.editing;
+						let currentNodeId = placingNodeId;
+
+						placingNodeId = null; // if we did not copy placingNodeId to currentNodeId (and instead just used placingNodeId directly) the pocketbase await takes so long that it causes gliches (as placingNodeId should be null right afterwards (but it often isn't??!?!))
+
+						let nodeRecord = await pocketbase.collection('nodes').update(currentNodeId, toDatabase(nodes[currentNodeId], false), { expand: "author" });	
+					} catch (err) {
+						if (placingNodeId != null) {
+							nodes[placingNodeId].state = NodeState.moving;
+						}
+
+						console.log(placingNodeId)
+
+						console.error(err);
 					}
 				}
 			})
@@ -157,26 +183,52 @@
 		}
 	})
 
+	function endDebounce() {
+		canStopMoving = true;
+	}
+
 	async function onNodeSubmission(node: NodeData) {
 		if (node.isLocal == false) {
 			console.warn("onNodeSubmission's node.isLocal should not be false")
 		}
 
-		let nodeRecord = await pocketbase.collection('nodes').create(toDatabase(node, false), { expand: "author" });
-		nodes[nodeRecord.id] = fromDatabase(nodeRecord, true);
-		//if (currentNodeIndex == null) {
-		//	currentNodeIndex = newNodeArray.length;
-		//	newNodeArray.push(fromDatabase(nodeRecord, true));
-		//
-		//	canStopMoving = false;
-		//	debounceTimeout = setTimeout(endDebounce, 400);
-		//}
+		if (placingNodeId == null) {
+			try {
+				let nodeRecord = await pocketbase.collection('nodes').create(toDatabase(node, false), { expand: "author" });
+				placingNodeId = nodeRecord.id;
+
+				nodes[nodeRecord.id] = fromDatabase(nodeRecord, true);
+			} catch (err) {
+				if (placingNodeId != null) {
+					delete nodes[placingNodeId];
+					placingNodeId = null;
+				}
+
+				console.error(err);
+			}
+
+			canStopMoving = false;
+			debounceTimeout = setTimeout(endDebounce, 400);
+		}
+	}
+
+	async function onNodeEndOfEditing(node: NodeData, currentText: string) {
+		try {
+			node.text = currentText;
+			node.state = NodeState.complete;
+
+			let record = await pocketbase.collection('nodes').update(node.id!, toDatabase(node, false));
+		} catch (err) {
+			node.state = NodeState.editing;
+
+			console.error(err);
+		}
 	}
 </script>
 
 <div id="tree-container" style="top: {yOffset}px; left: {xOffset}px">
 	{#each Object.entries(nodes) as [_, node]}
-		<Node bind:pocketbase={pocketbase} nodeData={node} onNodeSubmission={onNodeSubmission}></Node>
+		<Node bind:pocketbase={pocketbase} nodeData={node} onNodeSubmission={onNodeSubmission} onNodeEndOfEditing={onNodeEndOfEditing}></Node>
 	{/each}
 </div>
 <canvas id="tree-background"></canvas>

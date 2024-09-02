@@ -4,7 +4,7 @@
 	import { checkIfUserIsAuthor, fromDatabase, NodeState, toDatabase, type NodeData } from './node-data.svelte'
     import Switchbox from './switchbox.svelte';
 
-	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')), bookmarks = "0", likes = "0", nodeData={id: null,
+	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')), bookmarks = "0", likes = "0", nodeData= {id: null,
 												
 												state: NodeState.moving,
 												isLocal: true,
@@ -16,11 +16,7 @@
 												x: 0,
 												y: 0,
 
-												text: ""}, text="", onNodeSubmission }: { pocketbase: PocketBase, bookmarks: string, likes: string, nodeData: NodeData, text: string, onNodeSubmission: (node: NodeData) => void } = $props();
-	//let currentNodeIndex: number | null = $state(null);
-	//let debounceTimeout: number | null = $state(null);
-
-	//let canStopMoving = $state(false);
+												text: ""}, text="", onNodeSubmission, onNodeEndOfEditing }: { pocketbase: PocketBase, bookmarks: string, likes: string, nodeData: NodeData, text: string, onNodeSubmission: (node: NodeData) => void, onNodeEndOfEditing: (node: NodeData, currentText: string) => void } = $props();
 
 	let isSwitchboxOpen = $state(false);
 	let switchboxPositionX: number = $state(0);
@@ -29,11 +25,9 @@
 	let NewBranchButton: HTMLElement | null = $state(null);
 
 	async function openSwitchbox(event: MouseEvent) {
-	//	if (currentNodeIndex == null) {
-			isSwitchboxOpen = true;
-			switchboxPositionX = event.offsetX + NewBranchButton!.offsetLeft;
-			switchboxPositionY = event.offsetY + NewBranchButton!.offsetTop;
-	//	}
+		isSwitchboxOpen = true;
+		switchboxPositionX = event.offsetX + NewBranchButton!.offsetLeft;
+		switchboxPositionY = event.offsetY + NewBranchButton!.offsetTop;
 	}
 	
 	async function addHumanNode() {
@@ -57,46 +51,13 @@
 							text: ""}
 			
 			onNodeSubmission(newNodeData);
-
-		//	let nodeRecord = await pocketbase.collection('nodes').create(toDatabase({	id: null,
-		//																				state: NodeState.moving,
-		//																				isLocal: true,
-		//																				fromRobot: false,
-//
-		//																				authorId: authorRecord.id,
-		//																				previousNodeId: nodeData.id!,
-//
-		//																				x: 0,
-		//																				y: 0,
-//
-		//																				text: ""}, false));
-		//	if (currentNodeIndex == null) {
-//				currentNodeIndex = newNodeArray.length;
-		//		newNodeArray.push(fromDatabase(nodeRecord, true));
-
-		//		canStopMoving = false;
-		//		debounceTimeout = setTimeout(endDebounce, 400);
-			}
-		
+		}
 	}
 
 	async function addAINode() {
 		isSwitchboxOpen = false;
 
 		if (pocketbase.authStore.model != null) {
-			//let nodeRecord = await pocketbase.collection('nodes').create(toDatabase({	id: null,
-			//																			state: NodeState.moving,
-			//																			isLocal: true,
-			//																			fromRobot: false,
-//
-			//																			authorId: "lh485oxdij1oyoa",
-			//																			previousNodeId: nodeData.id!,
-//
-			//																			x: 0,
-			//																			y: 0,
-//
-			//																			text: ""}, false));
-
 			let newNodeData: NodeData = {id: null,
 							state: NodeState.moving,
 							isLocal: true,
@@ -109,27 +70,14 @@
 							y: 0,
 
 							text: ""}
+
 			onNodeSubmission(newNodeData);
-			//if (currentNodeIndex == null) {
-			//	currentNodeIndex = newNodeArray.length;
-			//	newNodeArray.push(fromDatabase(nodeRecord, true));
-//
-			//	canStopMoving = false;
-			//	debounceTimeout = setTimeout(endDebounce, 400);
-			//}
 		}
 	}
 
 	// NOTE: This function is called from the **new node**; do not use newNodeArray or currentNodeIndex to access the new node's data (because you are actually accessing the 'new new node's' data, which doesn't exist)
 	async function submitNode() {
-		nodeData.text = text;
-		nodeData.state = NodeState.complete;
-
-		let record = await pocketbase.collection('nodes').update(nodeData.id!, toDatabase(nodeData, true));
-	}
-
-	async function endDebounce() {
-		//canStopMoving = true
+		onNodeEndOfEditing(nodeData, text)
 	}
 
 	async function addBookmarks() {
@@ -145,24 +93,19 @@
 	}
 
 	async function onMouseDown(event: MouseEvent) {
-		//if ((currentNodeIndex != null) && (canStopMoving == true)) {
-		//	newNodeArray[currentNodeIndex].state = NodeState.editing;
-
-		//	let record = await pocketbase.collection('nodes').update(nodeData.id!, toDatabase(newNodeArray[currentNodeIndex], false));
-		//	currentNodeIndex = null;
-		//}
-
-		//if ((isSwitchboxOpen == true) && (event.target == document.getElementById("tree-background"))) {
-		//	isSwitchboxOpen = false;
-		//}
+		if ((isSwitchboxOpen == true) && (event.target == document.getElementById("tree-background"))) {
+			isSwitchboxOpen = false;
+		}
 	}
 </script>
 
 <div class="node-actions-container">
 	{#if nodeData.state == NodeState.moving}
 	<p>Click the left mouse button to place the node</p>
-	{:else if nodeData.state == NodeState.editing}
+	{:else if (nodeData.state == NodeState.editing) && (nodeData.fromRobot == false)}
 	<button onclick={submitNode}>Submit</button>
+	{:else if (nodeData.state == NodeState.editing) && (nodeData.fromRobot == true)}
+	<p>Generating...</p>
 	{:else}
 	<button  onclick={openSwitchbox} bind:this={NewBranchButton}>New Branch</button>
 	{#if isSwitchboxOpen == true }

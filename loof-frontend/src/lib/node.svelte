@@ -16,23 +16,33 @@
 					x: 0,
 					y: 0,
 
-					text: ""}, onNodeSubmission }: { pocketbase: PocketBase, nodeData: NodeData, onNodeSubmission: (node: NodeData) => void } = $props();
+					text: ""}, onNodeSubmission, onNodeEndOfEditing }: { pocketbase: PocketBase, nodeData: NodeData, onNodeSubmission: (node: NodeData) => void, onNodeEndOfEditing: (node: NodeData, currentText: string) => void } = $props();
 
 	function checkEditable(nodeData: NodeData): boolean {
 		switch (nodeData.state) {
 			case NodeState.editing:
-				return true;
+				if (nodeData.fromRobot == false) {
+					return true;
+				} else {
+					return false;
+				}
 			default:
 				return false;
 		}
 	}
 	let isEditable = $derived(checkEditable(nodeData));
 	let currentText = $derived(nodeData.text);
+
+	let editableText = $state(nodeData.text)
 </script>
 
 <div class="node" style="top: {nodeData.y!.toString()}px; left: {nodeData.x!.toString()}px">
+	{#if isEditable}
+	<textarea class="node-text-area" readonly={!isEditable} bind:value={editableText}></textarea>
+	{:else}
 	<textarea class="node-text-area" readonly={!isEditable} value={currentText}></textarea>
-	<NodeActions bind:pocketbase={pocketbase} bookmarks=0 likes=0 nodeData={nodeData} text={currentText} onNodeSubmission={onNodeSubmission}></NodeActions>
+	{/if}
+	<NodeActions bind:pocketbase={pocketbase} bookmarks=0 likes=0 nodeData={nodeData} text={editableText} onNodeSubmission={onNodeSubmission} onNodeEndOfEditing={onNodeEndOfEditing}></NodeActions>
 </div>
 
 <style>
