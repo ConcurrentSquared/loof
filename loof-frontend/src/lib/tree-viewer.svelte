@@ -10,11 +10,13 @@
 	let xOffset = $state(0);
 	let yOffset = $state(0);
 
+	let zoom = $state(1);
+
 	let localMousePositionX = $state(0);
 	let localMousePositionY = $state(0);
 
-	let mousePositionX = $derived((localMousePositionX - xOffset));
-	let mousePositionY = $derived((localMousePositionY - yOffset));
+	let mousePositionX = $derived((((localMousePositionX - xOffset) * zoom)));
+	let mousePositionY = $derived((((localMousePositionY - yOffset) * zoom)));
 
 	let nodes: { [id: string]: NodeData }  = $state({});
 
@@ -24,25 +26,31 @@
 	let debounceTimeout: number | null = $state(null)
 	let canStopMoving: boolean = $state(false);
 
-	function drawArrow(startX: number, startY: number, endX: number, endY: number, ctx: CanvasRenderingContext2D) {
+	function drawArrow(startX: number, startY: number, endX: number, endY: number, ctx: CanvasRenderingContext2D, zoom: number) {
 		ctx.beginPath();
 
-		ctx.moveTo(startX, startY);
-		ctx.lineTo(endX, endY);
+		let zoomedStartX = startX * zoom;
+		let zoomedStartY = startY * zoom;
 
-		let lineRads = Math.atan2(-(endY - startY), -(endX - startX));
+		let zoomedEndX = endX * zoom;
+		let zoomedEndY = endY * zoom;
+
+		ctx.moveTo(zoomedStartX, zoomedStartY);
+		ctx.lineTo(zoomedEndX, zoomedEndY);
+
+		let lineRads = Math.atan2(-(zoomedEndY - zoomedStartY), -(zoomedEndX - zoomedStartX));
 
 		let leftRads = lineRads - (30 * (Math.PI / 180));
 		let rightRads = lineRads + (30 * (Math.PI / 180));
 
-		let leftX = (Math.cos(leftRads) * 25) + endX;
-		let leftY = (Math.sin(leftRads) * 25) + endY;
+		let leftX = (Math.cos(leftRads) * 25 * zoom) + zoomedEndX;
+		let leftY = (Math.sin(leftRads) * 25 * zoom) + zoomedEndY;
 
-		let rightX = (Math.cos(rightRads) * 25) + endX;
-		let rightY = (Math.sin(rightRads) * 25) + endY;
+		let rightX = (Math.cos(rightRads) * 25 * zoom) + zoomedEndX;
+		let rightY = (Math.sin(rightRads) * 25 * zoom) + zoomedEndY;
 
 		ctx.lineTo(leftX, leftY);
-		ctx.moveTo(endX, endY);
+		ctx.moveTo(zoomedEndX, zoomedEndY);
 		
 		ctx.lineTo(rightX, rightY);
 
@@ -89,9 +97,6 @@
 		}, { expand: "author" });
 		
 		if((treeContainerDiv != null) && (treeBackground != null)) {
-			treeContainerDiv.style.left = xOffset.toString() + "px";
-			treeContainerDiv.style.top = yOffset.toString() + "px";
-
 			treeBackground.addEventListener("mousemove", (event) => {
 				if (dragging && (event.target == event.currentTarget)) {
 					xVelocity = event.screenX - (lastScreenX ?? xOffset);
@@ -108,14 +113,27 @@
 				}
 			});
 
+			treeBackground.addEventListener("wheel", (event) => {
+				let zoomDelta = event.deltaY * 0.001
+				if ((zoom + zoomDelta) < 0.1) {
+					zoomDelta = Math.max((zoom - 0.1), 0);
+				} else if ((zoom + zoomDelta) > 3) {
+					zoomDelta = Math.max((zoom - 3), 0);
+				}
+				
+				xOffset -= ((localMousePositionX - xOffset) / zoom) * zoomDelta;
+				yOffset -= ((localMousePositionY - yOffset) / zoom) * zoomDelta;
+				zoom += zoomDelta;
+			});
+
 			document.addEventListener("mousemove", (event) => {
-				localMousePositionX = event.clientX - 200;
-				localMousePositionY = event.clientY - 100;
+				localMousePositionX = event.screenX;
+				localMousePositionY = event.screenY;
 				
 				for (var key in nodes) {
 					if ((nodes[key].state == NodeState.moving) && (nodes[key].isLocal == true)) {
-						nodes[key].x = mousePositionX;
-						nodes[key].y = mousePositionY;
+						nodes[key].x = mousePositionX - 200;
+						nodes[key].y = mousePositionY - 150;
 					}
 				}
 			});
@@ -139,7 +157,7 @@
 						console.error(err);
 					}
 				}
-			})
+			});
 
 			treeBackground.addEventListener("mousedown", (event) => { 
 				if (event.button == 0) {
@@ -174,10 +192,10 @@
 			for (var key in nodes) {
 				let previous_node = nodes[nodes[key].previousNodeId]!;
 				if (previous_node != null) {
-					let previousNodeXPosition = previous_node.x! + 200;
-					let previousNodeYPosition = previous_node.y! + 200;
+					let previousNodeXPosition = (previous_node.x! + 200);
+					let previousNodeYPosition = (previous_node.y! + 200);
 
-					drawArrow(previousNodeXPosition + xOffset, previousNodeYPosition + yOffset, (nodes[key].x! + 200) + xOffset, nodes[key].y! + yOffset, ctx);
+					drawArrow(previousNodeXPosition + (xOffset / zoom), previousNodeYPosition + (yOffset / zoom), (nodes[key].x! + 200) + (xOffset / zoom), nodes[key].y! + (yOffset / zoom), ctx, zoom);
 				}
 			}
 		}
@@ -226,7 +244,7 @@
 	}
 </script>
 
-<div id="tree-container" style="top: {yOffset}px; left: {xOffset}px">
+<div id="tree-container" style="top: {yOffset}px; left: {xOffset}px; transform: scale({zoom});">
 	{#each Object.entries(nodes) as [_, node]}
 		<Node bind:pocketbase={pocketbase} nodeData={node} onNodeSubmission={onNodeSubmission} onNodeEndOfEditing={onNodeEndOfEditing}></Node>
 	{/each}
