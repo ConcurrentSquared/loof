@@ -162,7 +162,7 @@
 			console.warn("onNodeSubmission's node.isLocal should not be false")
 		}
 
-		let nodeRecord = await pocketbase.collection('nodes').create(toDatabase(node, false));
+		let nodeRecord = await pocketbase.collection('nodes').create(toDatabase(node, false), { expand: "author" });
 		nodes[nodeRecord.id] = fromDatabase(nodeRecord, true);
 		//if (currentNodeIndex == null) {
 		//	currentNodeIndex = newNodeArray.length;
