@@ -199,15 +199,19 @@
 		padding-right: 5px;
 
 		height: 100%;
+
+		cursor: pointer;
 	}
 
 	p {
-		font: 0.5em sans-serif;
+		font: 0.85em sans-serif;
 
 		padding: 0;
 		padding-left: 5px;
 		padding-right: 5px;
 
 		margin: 0;
+		margin-top: auto;
+		margin-bottom: auto;
 	}
 </style>
