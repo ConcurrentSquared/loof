@@ -34,5 +34,7 @@
 
   		padding: 0;
 		padding-left: 5px;
+
+		cursor: pointer;
 	}
 </style>

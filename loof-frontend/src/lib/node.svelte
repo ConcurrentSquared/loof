@@ -40,7 +40,7 @@
 	{#if isEditable}
 	<textarea class="node-text-area" readonly={!isEditable} bind:value={editableText}></textarea>
 	{:else}
-	<textarea class="node-text-area" readonly={!isEditable} value={currentText}></textarea>
+	<textarea class="node-text-area not-editable" readonly={!isEditable} value={currentText}></textarea>
 	{/if}
 	<NodeActions bind:pocketbase={pocketbase} bookmarks=0 likes=0 nodeData={nodeData} text={editableText} onNodeSubmission={onNodeSubmission} onNodeEndOfEditing={onNodeEndOfEditing}></NodeActions>
 </div>
@@ -76,6 +76,10 @@
 		box-sizing: border-box;
 
 		background-color: rgb(255, 252, 245);
+	}
+
+	.node-text-area.not-editable {
+		cursor: default;
 	}
 
 	.node-text-area:focus {

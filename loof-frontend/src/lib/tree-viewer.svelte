@@ -21,9 +21,6 @@
 	let localMousePositionX = $state(0);
 	let localMousePositionY = $state(0);
 
-	let mousePositionX = $derived((((localMousePositionX - xOffset) * targetZoom)));
-	let mousePositionY = $derived((((localMousePositionY - yOffset) * targetZoom)));
-
 	let nodes: { [id: string]: NodeData }  = $state({});
 
 	let placingNodeId: string | null = $state(null);
@@ -109,14 +106,17 @@
 				if (dragging && (event.target == event.currentTarget)) {
 					const deltaTime = event.timeStamp - (lastMouseMove ?? event.timeStamp);
 
-					if ((lastScreenX != null) && (lastScreenY != null) && (deltaTime > 0.001)) {
-						xVelocity = (event.screenX - (lastScreenX)) / deltaTime;
-						yVelocity = (event.screenY - (lastScreenY)) / deltaTime;
+					if ((lastScreenX != null) && (lastScreenY != null)) {
+						if (deltaTime > 0.001) {
+							xVelocity = (event.screenX - (lastScreenX)) / deltaTime;
+							yVelocity = (event.screenY - (lastScreenY)) / deltaTime;
+						} else {
+							xVelocity = 0;
+							yVelocity = 0;
+						}
 
 						xOffset += (event.screenX - (lastScreenX));
 						yOffset += (event.screenY - (lastScreenY));
-
-						
 					}
 
 					lastMouseMove = event.timeStamp;
@@ -201,13 +201,13 @@
 			}
 
 			document.addEventListener("mousemove", (event) => {
-				localMousePositionX = event.screenX;
-				localMousePositionY = event.screenY;
+				localMousePositionX = event.clientX;
+				localMousePositionY = event.clientY;
 				
 				for (var key in nodes) {
 					if ((nodes[key].state == NodeState.moving) && (nodes[key].isLocal == true)) {
-						nodes[key].x = mousePositionX - 200;
-						nodes[key].y = mousePositionY - 150;
+						nodes[key].x = ((localMousePositionX - (200 * zoom)) - xOffset) / zoom;
+						nodes[key].y = ((localMousePositionY - (100 * zoom)) - yOffset) / zoom;
 					}
 				}
 			});
@@ -233,9 +233,14 @@
 			treeBackground.addEventListener("mousedown", (event) => { 
 				if (event.button == 0) {
 					dragging = true;
+
+					document.body.style.userSelect = "none";
 				
 					lastScreenX = event.screenX;
 					lastScreenY = event.screenY;
+
+					xVelocity = 0;
+					yVelocity = 0;
 				}
 			});
 
@@ -246,10 +251,11 @@
 
 				lastMouseMove = null;
 
+				document.body.style.userSelect = "auto";
+
 				if (panCallbackId == null) {
 					panCallbackId = window.requestAnimationFrame(onNewPanFrame);
 				}
-				
 			});
 
 			treeBackground.addEventListener("mouseleave", (event) => { 
@@ -258,6 +264,28 @@
 
 			treeBackground.width = window.innerWidth;
 			treeBackground.height = window.innerHeight;
+
+			window.addEventListener('resize', function(event){
+				treeBackground.width = window.innerWidth;
+				treeBackground.height = window.innerHeight;
+
+				let ctx = treeBackground.getContext("2d");
+				ctx!.reset();
+
+				drawBackground(ctx!);
+			});
+			
+			function drawBackground(ctx: CanvasRenderingContext2D) {
+				for (var key in nodes) {
+					let previous_node = nodes[nodes[key].previousNodeId]!;
+					if (previous_node != null) {
+						let previousNodeXPosition = (previous_node.x! + 200);
+						let previousNodeYPosition = (previous_node.y! + 200);
+
+						drawArrow(previousNodeXPosition + (xOffset / zoom), previousNodeYPosition + (yOffset / zoom), (nodes[key].x! + 200) + (xOffset / zoom), nodes[key].y! + (yOffset / zoom), ctx, zoom);
+					}
+				}
+			}
 		}
   	});
 
@@ -266,7 +294,7 @@
 		let treeBackground = document.getElementById("tree-background") as HTMLCanvasElement;
 		let ctx = treeBackground.getContext("2d");
 
-		ctx?.reset();
+		ctx!.reset();
 
 		if (ctx != null) {
 			for (var key in nodes) {
