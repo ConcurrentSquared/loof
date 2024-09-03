@@ -7,6 +7,8 @@
     import LoginButton from './login-button.svelte';
 	import { fromDatabase, type NodeData, NodeState, toDatabase } from './node-data.svelte'
 
+	let { pocketbase = (new PocketBase('http://127.0.0.1:8090')) }: { pocketbase: PocketBase } = $props();
+
 	let xTargetOffset = $state(0);
 	let yTargetOffset = $state(0);
 
@@ -25,7 +27,6 @@
 	let nodes: { [id: string]: NodeData }  = $state({});
 
 	let placingNodeId: string | null = $state(null);
-	let pocketbase = $state(new PocketBase('http://127.0.0.1:8090'))
 
 	let debounceTimeout: number | null = $state(null)
 	let canStopMoving: boolean = $state(false);
@@ -329,7 +330,6 @@
 	{/each}
 </div>
 <canvas id="tree-background"></canvas>
-<LoginButton bind:pocketbase={pocketbase}></LoginButton>
 
 <style>
 	#tree-container {

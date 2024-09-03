@@ -17,21 +17,34 @@
 </script>
 
 <div class="user-actions-container">
+	<button>Most Bookmarked</button>
+	<button disabled={!isLogin}>Your Bookmarks</button>
 	{#if isLogin == false}
 	<button onclick={login}>Login</button>
 	{:else}
+	<button>Change Account Settings</button>
 	<button onclick={signout}>Sign out of {pocketbase.authStore.model!.username}</button>
 	{/if}
 </div>
 
 <style>
 	.user-actions-container {
+		display: flex;
+		flex-direction: column;
+
+		align-items: flex-end;
+
 		position: absolute;
 		z-index: 100;
 
-		background-color: rgba(230, 230, 230, 0.8);
+		background-color: rgb(230, 230, 230);
+		border: 5px solid black;
+
 		right: 0;
 		bottom: 0;
+
+		margin: 5px;
+		padding: 5px;
 	}
 	
 	button {

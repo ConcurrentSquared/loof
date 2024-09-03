@@ -12,8 +12,9 @@
 		height: fit-content;
 
 		margin: auto;
-		padding: 5px;
+		padding: 30px;
 
-		border: 5px solid black;
+		border: 10px solid black;
+		background-color: white;
 	}
 </style>

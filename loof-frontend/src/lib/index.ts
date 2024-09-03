@@ -2,3 +2,4 @@
 export { default as TreeViewer } from "./tree-viewer.svelte";
 export { default as LoginButton } from "./login-button.svelte";
 export { default as ModalDialog } from "./modal.svelte"
+export { default as UsernameModal } from "./username-modal.svelte"
