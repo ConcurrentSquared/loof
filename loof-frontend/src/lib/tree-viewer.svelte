@@ -163,8 +163,6 @@
 					zoomDelta = Math.max((targetZoom - 3), 0);
 				}
 				
-				//xOffset -= ((localMousePositionX - xOffset) / targetZoom) * zoomDelta;
-				//yOffset -= ((localMousePositionY - yOffset) / targetZoom) * zoomDelta;
 				targetZoom += zoomDelta;
 
 				if (zoomCallbackId == null) {
@@ -226,9 +224,6 @@
 						if (placingNodeId != null) {
 							nodes[placingNodeId].state = NodeState.moving;
 						}
-
-						console.log(placingNodeId)
-
 						console.error(err);
 					}
 				}
