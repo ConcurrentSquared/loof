@@ -1,8 +1,6 @@
 <script lang="ts">
 	import PocketBase, { type RecordAuthResponse, type RecordModel } from 'pocketbase';
-	import UpdateAuthorship from './node-actions.svelte'
-
-	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')), isLogin = $bindable((pocketbase.authStore.model == null) ? false : true), afterLogin, afterLogout, openUsernameModal, openAccountBookmarksModal, openTopBookmarksModal, openFeaturedBookmarksModal, openMobileMenuModal }: { pocketbase: PocketBase, isLogin: boolean, afterLogin: (userId: string) => Promise<void>, afterLogout: () => Promise<void>, openUsernameModal: () => void, openAccountBookmarksModal: () => void, openTopBookmarksModal: () => void, openFeaturedBookmarksModal: () => void, openMobileMenuModal: () => void } = $props();
+	let { pocketbase = new PocketBase('http://127.0.0.1:8090'), isLogin = ((pocketbase.authStore.model == null) ? false : true), openUsernameModal, openAccountBookmarksModal, openTopBookmarksModal, openFeaturedBookmarksModal, onClose }: { pocketbase: PocketBase, isLogin: boolean, openUsernameModal: () => void, openAccountBookmarksModal: () => void, openTopBookmarksModal: () => void, openFeaturedBookmarksModal: () => void, onClose: () => void } = $props();
 	let username: string = $state(pocketbase.authStore.model?.username ?? "")
 
 	async function login() {
@@ -22,8 +20,6 @@
 			if (authData.record.has_changed_username == false) {
 				openUsernameModal();
 			}
-
-			await afterLogin(authData.record.id);
 		} catch (err) {
 			isLogin = false;
 		}
@@ -36,7 +32,6 @@
 
 		pocketbase.authStore.clear();
 		isLogin = false;
-		await afterLogout();
 	}
 
 	if (pocketbase.authStore.model != null) {
@@ -50,7 +45,8 @@
 	}
 </script>
 
-<div class="user-actions-container">
+
+<div class="menu-container">
 	<h2>Menu:</h2>
 	<button onclick={openFeaturedBookmarksModal}>Featured</button>
 	<button onclick={openTopBookmarksModal}>Most Bookmarked</button>
@@ -61,70 +57,44 @@
 	<button onclick={openUsernameModal}>Change Account Settings</button>
 	<button onclick={signout}>Sign out of {username}</button>
 	{/if}
+	<button onclick={onClose}>Close</button>
 </div>
-<button class="user-actions-button" onclick={openMobileMenuModal}>Menu</button>
 
 <style>
-	button {
-		background-color: inherit;
+	.menu-container {
+		overflow: hidden;
+		overflow-y: auto;
 
-		border: 0;
-
-  		padding: 0;
-		padding-left: 5px;
-		padding-right: 5px;
-
-		height: 100%;
-
-		cursor: pointer;
-
-		font-family: inherit;
-	}
-	
-	.user-actions-container {
+		height: 350px;
+		margin-bottom: 30px;
+		
 		display: flex;
 		flex-direction: column;
+		align-items: stretch;
+		justify-content: space-evenly;
+	} 
 
-		align-items: flex-end;
-
-		position: absolute;
-		z-index: 100;
-
-		background-color: rgb(245, 245, 245);
-		border: 5px solid black;
-
-		right: 0;
-		bottom: 0;
-
-		margin: 5px;
-		padding: 5px;
-
+	h2 {
 		font-family: "Jost", "Futura", Arial, Helvetica, sans-serif;
 	}
 
-	.user-actions-button {
-		position: absolute;
-		z-index: 100;
-
-		background-color: rgb(245, 245, 245);
-		border: 5px solid black;
-
-		right: 0;
-		bottom: 0;
-
-		margin: 5px;
-		padding: 5px;
-
+	button {
 		font-family: "Jost", "Futura", Arial, Helvetica, sans-serif;
 
-		height: 50px;
-		width: 50px;
+		background-color: rgb(250, 249, 243);
+
+		border: 2px solid black;
+		border-radius: 2px;
+
+		padding: 5px;
 	}
 
-	@media (max-width: 768px) {
-        .user-actions-container { display: none; }
-    }
-	@media (min-width: 768px) {
-        .user-actions-button { display: none; }
-    }
+	button:hover {
+		background-color:  rgb(223, 219, 197);
+	}
+
+	button:active {
+		color: white;
+		background-color: black;
+	}
 </style>

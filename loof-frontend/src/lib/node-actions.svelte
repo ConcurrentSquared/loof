@@ -1,10 +1,11 @@
 <script lang="ts">
 	import PocketBase from 'pocketbase';
 
-	import { checkIfUserIsAuthor, fromDatabase, NodeState, toDatabase, type NodeData } from './node-data.svelte'
+	import { checkIfUserIsAuthor, checkIfUserIsAuthorOfNode, fromDatabase, getDisplayUsername, getUserAuthor, NodeState, toDatabase, type NodeData } from './node-data.svelte'
     import Switchbox from './switchbox.svelte';
+    import { mount, onMount, tick } from 'svelte';
 
-	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')), bookmarks = "0", likes = "0", nodeData= {id: null,
+	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')), isLogin = ((pocketbase.authStore.model == null) ? false : true), bookmarks = "0", nodeData= {id: null,
 												
 												state: NodeState.moving,
 												isLocal: true,
@@ -16,13 +17,18 @@
 												x: 0,
 												y: 0,
 
-												text: ""}, text="", onNodeSubmission, onNodeEndOfEditing }: { pocketbase: PocketBase, bookmarks: string, likes: string, nodeData: NodeData, text: string, onNodeSubmission: (node: NodeData) => void, onNodeEndOfEditing: (node: NodeData, currentText: string) => void } = $props();
+												text: ""}, text="", onNodeSubmission, onNodeEndOfEditing, updatePocketbaseRequest }: { pocketbase: PocketBase, isLogin: boolean, bookmarks: string, nodeData: NodeData, text: string, onNodeSubmission: (node: NodeData) => void, onNodeEndOfEditing: (node: NodeData, currentText: string) => void, updatePocketbaseRequest: (node: NodeData, currentText: string) => void } = $props();
 
 	let isSwitchboxOpen = $state(false);
 	let switchboxPositionX: number = $state(0);
 	let switchboxPositionY: number = $state(0);
 
 	let NewBranchButton: HTMLElement | null = $state(null);
+
+	let authorUsername: string | null = $state(null);
+	let fromCurrentUser: boolean = $state(false)
+
+	let updateInterval: number | null = $state(null);
 
 	async function openSwitchbox(event: MouseEvent) {
 		isSwitchboxOpen = true;
@@ -81,15 +87,21 @@
 	}
 
 	async function addBookmarks() {
-		let oldNodeData = await pocketbase.collection('nodes').getOne(nodeData.id!, {});
-		let newNodeData = await pocketbase.collection('nodes').update(nodeData.id!, {"bookmarks": (oldNodeData.bookmarks + 1) });
-		bookmarks = newNodeData.bookmarks;
+		try {
+			let res = await pocketbase.collection('bookmarks').create({ "node": nodeData.id!, "user": pocketbase.authStore.model!.id });
+			bookmarks += 1;
+		} catch (error) {
+			console.error(error);
+		}
 	}
 
-	async function addLikes() {
-		let oldNodeData = await pocketbase.collection('nodes').getOne(nodeData.id!, {});
-		let newNodeData = await pocketbase.collection('nodes').update(nodeData.id!, {"likes": (oldNodeData.likes + 1) });
-		likes = newNodeData.likes;
+	async function addReport() {
+		try {
+			let res = await pocketbase.collection('bookmarks').create({ "node": nodeData.id!, "user": pocketbase.authStore.model!.id });
+			//bookmarks += 1;
+		} catch (error) {
+			console.error(error);
+		}
 	}
 
 	async function onMouseDown(event: MouseEvent) {
@@ -97,22 +109,54 @@
 			isSwitchboxOpen = false;
 		}
 	}
+
+	export async function updateAuthorship(userId: string)
+	{
+		let currentAuthorId = await getUserAuthor(userId, pocketbase);
+		fromCurrentUser = await checkIfUserIsAuthorOfNode(currentAuthorId, pocketbase);
+	}
+
+	onMount(async () => {
+		authorUsername = await getDisplayUsername(nodeData, pocketbase);
+
+		let currentUserId: string | null = null;
+		let currentUserStore = pocketbase.authStore;
+		if (currentUserStore.model != null) {
+			currentUserId = currentUserStore.model.id;
+		}
+
+		let currentAuthorId = await getUserAuthor(currentUserId, pocketbase);
+		fromCurrentUser = await checkIfUserIsAuthorOfNode(currentAuthorId, pocketbase);
+
+		bookmarks = (await pocketbase.collection('most_bookmarked').getOne(nodeData.id!)).bookmark_count;
+
+		pocketbase.collection('most_bookmarked').subscribe(nodeData.id!, (event) => {
+			if (event.action == "update") {
+				bookmarks = event.record.bookmark_count;
+			}
+		});
+
+		updateInterval = setInterval(async () => { updatePocketbaseRequest(nodeData, text); }, 5000);
+	});
 </script>
 
 <div class="node-actions-container">
 	{#if nodeData.state == NodeState.moving}
-	<p>Click the left mouse button to place the node</p>
-	{:else if (nodeData.state == NodeState.editing) && (nodeData.fromRobot == false)}
+	<p>Click the left mouse button (or tap) to place the node</p>
+	{:else if (nodeData.state == NodeState.editing) && (nodeData.fromRobot == false) && (fromCurrentUser == true)}
 	<button onclick={submitNode}>Submit</button>
+	{:else if (nodeData.state == NodeState.editing) && (nodeData.fromRobot == false) && (fromCurrentUser == false)}
+	<p>User {authorUsername} is writing..</p>
 	{:else if (nodeData.state == NodeState.editing) && (nodeData.fromRobot == true)}
 	<p>Generating...</p>
 	{:else}
-	<button  onclick={openSwitchbox} bind:this={NewBranchButton}>New Branch</button>
+	<button onclick={openSwitchbox} bind:this={NewBranchButton} disabled={!isLogin}>New Branch</button>
 	{#if isSwitchboxOpen == true }
 	<Switchbox x_position={switchboxPositionX} y_position={switchboxPositionY} on_write_selection={addHumanNode} on_generate_selection={addAINode}></Switchbox>
 	{/if}
-	<button onclick={addBookmarks}>Bookmark: {bookmarks}</button>
-	<button onclick={addLikes}>Like: {likes}</button>
+	<button onclick={addBookmarks} disabled={!isLogin}>Bookmark: {bookmarks}</button>
+	<button onclick={addReport} disabled={!isLogin}>Report</button>
+	<p>Written by {authorUsername}</p>
 	{/if}
 </div>
 
@@ -133,6 +177,8 @@
 	}
 
 	button {
+		font: 0.85em "Jost", Arial, Helvetica, sans-serif;
+		
 		background-color: inherit;
 
 		border: 0;
@@ -146,8 +192,13 @@
 		cursor: pointer;
 	}
 
+	button:disabled {
+		color: #646464;
+		cursor: not-allowed;
+	}
+
 	p {
-		font: 0.85em sans-serif;
+		font: 0.85em "Jost", Arial, Helvetica, sans-serif;
 
 		padding: 0;
 		padding-left: 5px;

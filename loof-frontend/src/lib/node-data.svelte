@@ -119,23 +119,64 @@
 			} else {
 				return false;
 			}
-		}
-		
+		}	
 	}
 
-	export async function getDisplayUsername(node: NodeData, pocketbase: PocketBase): Promise<string | null> {
-		let authorRecord = await pocketbase.collection('authors').getOne(node.authorId);
+	export async function getUserAuthor(authorId: string | null, pocketbase: PocketBase): Promise<string | null> {
+		if (authorId == null) {
+			return null;
+		} else {
+			let authorRecord = await pocketbase.collection('authors').getFirstListItem('author_id?="' + authorId + '"&&' + 'origin="human"', { requestKey: null })
+									.catch(err => {if ((err instanceof ClientResponseError) && (err.status) == 404) { return null }});
 
-		if (authorRecord.id != null) {
-			if (authorRecord.type == "human") {
-				let userRecord = await pocketbase.collection('users').getOne(authorRecord.authorId); 
+			return authorRecord?.id ?? null;
+		}	
+	}
+
+	export async function checkIfUserIsAuthorOfNode(authorId: string | null, pocketbase: PocketBase): Promise<boolean> {
+		if (authorId == null) {
+			return false;
+		} else {
+			let authorRecord = await pocketbase.collection('authors').getOne(authorId, { requestKey: null })
+									.catch(err => {if ((err instanceof ClientResponseError) && (err.status) == 404) { return null }});
+			
+
+			if (authorRecord?.id == authorId) {
+				return true;
+			} else {
+				return false;
+			}
+		}	
+	}
+
+	// TODO: Make this function more efficient
+	export async function getDisplayUsername(node: NodeData, pocketbase: PocketBase): Promise<string | null> {
+		if (node.authorId != null) {
+			if (node.fromRobot == false) {
+				let authorRecord = await pocketbase.collection('authors').getOne(node.authorId, { requestKey: null });
+
+				let userRecord = await pocketbase.collection('users').getOne(authorRecord.author_id, { requestKey: null }); 
 				return userRecord.username;
 			} else {
-				let userRecord = await pocketbase.collection('robots').getOne(authorRecord.authorId); 
-				return userRecord.name;
+				let authorRecord = await pocketbase.collection('authors').getOne(node.authorId, { requestKey: null });
+
+				let robotRecord = await pocketbase.collection('robots').getOne(authorRecord.author_id, { requestKey: null }); 
+				return robotRecord.model;
 			}
 		} else {
 			return null;
+		}
+	}
+
+	export async function getQuotationUsername(authorId: string, pocketbase: PocketBase) : Promise<string> {
+		let authorRecord = await pocketbase.collection('authors').getOne(authorId, { requestKey: null });
+
+		if (authorRecord.origin == "human") {
+			let userRecord = await pocketbase.collection('users').getOne(authorRecord.author_id, { requestKey: null }); 
+			return userRecord.username;
+		} else {
+			let robotRecord = await pocketbase.collection('robots').getOne(authorRecord.author_id, { requestKey: null }); 
+			return robotRecord.model;
 		}
 	}
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, mount } from 'svelte';
+	import { stateParams } from 'kit-state-params';
 	import PocketBase from 'pocketbase';
     import type { RecordAuthResponse, RecordModel } from 'pocketbase';
 
@@ -7,10 +8,22 @@
     import LoginButton from './login-button.svelte';
 	import { fromDatabase, type NodeData, NodeState, toDatabase } from './node-data.svelte'
 
-	let { pocketbase = (new PocketBase('http://127.0.0.1:8090')) }: { pocketbase: PocketBase } = $props();
+	let { pocketbase = (new PocketBase('http://127.0.0.1:8090')), isLogin = ((pocketbase.authStore.model == null) ? false : true) }: { pocketbase: PocketBase, isLogin: boolean } = $props();
 
-	let xTargetOffset = $state(0);
-	let yTargetOffset = $state(0);
+	const searchParams = stateParams({
+		schema: {
+			x: 'number',
+			y: 'number',
+			zoom: 'number'
+		},
+		debounce: false, // Ignore this 'error'
+		twoWayBinding: true,
+
+		shallow: true,
+		invalidate: [],
+		invalidateAll: false,
+		pushHistory: false // DO NOT CHANGE (if you are using chrome)
+	})
 
 	let xOffset = $state(0);
 	let yOffset = $state(0);
@@ -60,13 +73,61 @@
 		ctx.stroke();
 	}
 
+	async function updatePocketbaseRequest(nodeData: NodeData, text: string) {
+		try {
+			if ((nodeData.state != NodeState.complete) && (nodeData.isLocal == true) && (nodeData.fromRobot == false)) {
+				nodeData.text = text;
+				let record = await pocketbase.collection('nodes').update(nodeData.id!, toDatabase(nodeData, false));
+			}
+		} catch (err) {
+			console.error(err);
+		}
+	}
+
+	let nodeComponents: any = $state(new Map());
+	export async function updateAuthorships(userId: string) {
+		console.log(nodeComponents)
+		for (const [_, nodeComponent] of Object.entries(nodeComponents)) {
+			(nodeComponent as any).updateAuthorship(userId);
+		}
+	}
+
 	onMount(async () => {
+		if (searchParams.zoom != null) {
+			zoom = searchParams.zoom;
+		} 
+		else
+		{
+			searchParams.zoom = 1;
+		}
+
+		if (searchParams.x != null) {
+			xOffset = searchParams.x + (window.innerWidth * 0.5);
+			console.log(xOffset)
+		}
+		else
+		{
+			searchParams.x = -200;
+			xOffset = searchParams.x  + (window.innerWidth * 0.5);
+		}
+
+		if (searchParams.y != null) {
+			yOffset = searchParams.y + (window.innerHeight * 0.5);
+		}
+		else
+		{
+			searchParams.y = -100;
+			yOffset = searchParams.y + (window.innerHeight * 0.5);
+		}
+
 		let dragging = false;
 		let xVelocity = 0;
 		let yVelocity = 0;
 
 		let lastScreenX: number | null = null;
 		let lastScreenY: number | null = null;
+
+		let lastDistance: number | null = null;
 
 		let treeContainerDiv = document.getElementById("tree-container");
 		let treeBackground = document.getElementById("tree-background") as HTMLCanvasElement;
@@ -88,6 +149,7 @@
 					break;
 				case "update":
 					if ((nodes[event.record.id]!.isLocal == false) || ((nodes[event.record.id]!.fromRobot == true) && (nodes[event.record.id]!.state != NodeState.moving))) {
+						console.log(event.record)
 						let newNodeData = fromDatabase(event.record, nodes[event.record.id]!.isLocal);
 						nodes[event.record.id] = newNodeData;
 					}
@@ -114,14 +176,92 @@
 							xVelocity = 0;
 							yVelocity = 0;
 						}
-
+						
 						xOffset += (event.screenX - (lastScreenX));
 						yOffset += (event.screenY - (lastScreenY));
+
+						searchParams.x = (xOffset - (window.innerWidth * 0.5)) / zoom;
+						searchParams.y = (yOffset - (window.innerHeight * 0.5)) / zoom;
 					}
 
 					lastMouseMove = event.timeStamp;
 					lastScreenX = event.screenX;
 					lastScreenY = event.screenY;
+				}
+			});
+
+			treeBackground.addEventListener("touchmove", (event) => {
+				event.preventDefault();
+
+				if (event.touches.length == 1) {
+					if ((lastScreenX != null) && (lastScreenY != null)) {
+						xOffset += (event.touches[0].clientX - (lastScreenX));
+						yOffset += (event.touches[0].clientY - (lastScreenY));
+					}
+
+					lastScreenX = event.touches[0].clientX;
+					lastScreenY = event.touches[0].clientY;
+					lastDistance = null;
+
+					searchParams.x = (xOffset - (window.innerWidth * 0.5)) / zoom;
+					searchParams.y = (yOffset - (window.innerHeight * 0.5)) / zoom;
+				}
+				else if (event.touches.length == 2) {
+					let centroidX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+					let centroidY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+
+					if ((lastScreenX != null) && (lastScreenY != null)) {
+						xOffset += (centroidX - (lastScreenX));
+						yOffset += (centroidY - (lastScreenY));
+					}
+
+					let currentTouchDisplacementX = (event.touches[0].clientX - event.touches[1].clientX);
+					let currentTouchDisplacementY = (event.touches[0].clientY - event.touches[1].clientY);
+					let currentTouchDistance = Math.sqrt(Math.pow(currentTouchDisplacementX, 2) + Math.pow(currentTouchDisplacementY, 2));
+
+					if (lastDistance != null) {
+						let lastZoom = zoom;
+
+						let zoomScalingFactor = lastDistance / currentTouchDistance;
+						zoom *= zoomScalingFactor;
+
+						xOffset -= ((centroidX - xOffset) / zoom) * (zoom - lastZoom);
+						yOffset -= ((centroidY - yOffset) / zoom) * (zoom - lastZoom);
+					}
+
+					lastScreenX = centroidX;
+					lastScreenY = centroidY;
+
+					lastDistance = currentTouchDistance;
+					
+					searchParams.x = (xOffset - (window.innerWidth * 0.5)) / zoom;
+					searchParams.y = (yOffset - (window.innerHeight * 0.5)) / zoom;
+					searchParams.zoom = zoom;
+				}
+			});
+
+			treeBackground.addEventListener("touchend", (event) => {
+				lastScreenX = null;
+				lastScreenY = null;
+
+				lastDistance = null;
+			});
+
+			treeBackground.addEventListener("touchstart", async (event) => {
+				if ((placingNodeId != null) && (canStopMoving == true)) {
+					try {
+						nodes[placingNodeId].state = NodeState.editing;
+						let currentNodeId = placingNodeId;
+
+						placingNodeId = null; // if we did not copy placingNodeId to currentNodeId (and instead just used placingNodeId directly) the pocketbase await takes so long that it causes gliches (as placingNodeId should be null right afterwards (but it often isn't??!?!))
+
+						let nodeRecord = await pocketbase.collection('nodes').update(currentNodeId, toDatabase(nodes[currentNodeId], false), { expand: "author" });	
+					} catch (err) {
+						if (placingNodeId != null) {
+							nodes[placingNodeId].state = NodeState.moving;
+						}
+						console.error(err);
+					}
 				}
 			});
 
@@ -136,13 +276,15 @@
 
 					xOffset += panDeltaX * 1;
 					yOffset += panDeltaY * 1;
+
+					searchParams.x = (xOffset - (window.innerWidth * 0.5)) / zoom;
+					searchParams.y = (yOffset - (window.innerHeight * 0.5)) / zoom;
 					
 					xVelocity *= (1.0 - (0.001 * deltaTime));
 					yVelocity *= (1.0 - (0.001 * deltaTime));
 
 					if ((xVelocity != 0.00) && (yVelocity != 0.00)) {
 						window.requestAnimationFrame(onNewPanFrame);
-
 						lastPanFrame = timeStamp; 
 					} else {
 						lastPanFrame = null;
@@ -188,7 +330,12 @@
 
 				xOffset -= ((localMousePositionX - xOffset) / zoom) * zoomDelta;
 				yOffset -= ((localMousePositionY - yOffset) / zoom) * zoomDelta;
+				
+				searchParams.x = (xOffset - (window.innerWidth * 0.5)) / zoom;
+				searchParams.y = (yOffset - (window.innerHeight * 0.5)) / zoom;
+				
 				zoom += zoomDelta;
+				searchParams.zoom = zoom;
 
 				if (zoom != targetZoom) {
 					window.requestAnimationFrame(onNewZoomFrame);
@@ -268,6 +415,9 @@
 			window.addEventListener('resize', function(event){
 				treeBackground.width = window.innerWidth;
 				treeBackground.height = window.innerHeight;
+
+				searchParams.x = (xOffset - (window.innerWidth * 0.5)) / zoom;
+				searchParams.y = (yOffset - (window.innerHeight * 0.5)) / zoom;
 
 				let ctx = treeBackground.getContext("2d");
 				ctx!.reset();
@@ -353,8 +503,8 @@
 </script>
 
 <div id="tree-container" style="top: {yOffset}px; left: {xOffset}px; transform: scale({zoom});">
-	{#each Object.entries(nodes) as [_, node]}
-		<Node bind:pocketbase={pocketbase} nodeData={node} onNodeSubmission={onNodeSubmission} onNodeEndOfEditing={onNodeEndOfEditing}></Node>
+	{#each Object.entries(nodes) as [i, node]}
+		<Node bind:this={nodeComponents[i]} bind:pocketbase={pocketbase} isLogin={isLogin} nodeData={node} onNodeSubmission={onNodeSubmission} onNodeEndOfEditing={onNodeEndOfEditing} updatePocketbaseRequest={updatePocketbaseRequest}></Node>
 	{/each}
 </div>
 <canvas id="tree-background"></canvas>
