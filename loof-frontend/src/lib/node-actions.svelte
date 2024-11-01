@@ -30,6 +30,9 @@
 
 	let updateInterval: number | null = $state(null);
 
+	let bookmarkId: string | null = $state(null);
+	let reportId: string | null = $state(null);
+
 	async function openSwitchbox(event: MouseEvent) {
 		isSwitchboxOpen = true;
 		switchboxPositionX = event.offsetX + NewBranchButton!.offsetLeft;
@@ -88,8 +91,15 @@
 
 	async function addBookmarks() {
 		try {
-			let res = await pocketbase.collection('bookmarks').create({ "node": nodeData.id!, "user": pocketbase.authStore.model!.id });
-			bookmarks += 1;
+			if (bookmarkId != null) {
+				let res = await pocketbase.collection('bookmarks').delete(bookmarkId);
+				bookmarkId = null;
+				bookmarks += -1;
+			} else {
+				let res = await pocketbase.collection('bookmarks').create({ "node": nodeData.id!, "user": pocketbase.authStore.model!.id });
+				bookmarkId = res.id;
+				bookmarks += 1;
+			}
 		} catch (error) {
 			console.error(error);
 		}
@@ -97,8 +107,13 @@
 
 	async function addReport() {
 		try {
-			let res = await pocketbase.collection('bookmarks').create({ "node": nodeData.id!, "user": pocketbase.authStore.model!.id });
-			//bookmarks += 1;
+			if (reportId != null) {
+				let res = await pocketbase.collection('reports').delete(reportId);
+				reportId = null;
+			} else {
+				let res = await pocketbase.collection('reports').create({ "node": nodeData.id!, "user": pocketbase.authStore.model!.id });
+				reportId = res.id;
+			}
 		} catch (error) {
 			console.error(error);
 		}
@@ -130,11 +145,16 @@
 
 		bookmarks = (await pocketbase.collection('most_bookmarked').getOne(nodeData.id!)).bookmark_count;
 
-		pocketbase.collection('most_bookmarked').subscribe(nodeData.id!, (event) => {
-			if (event.action == "update") {
-				bookmarks = event.record.bookmark_count;
-			}
-		});
+		// WHY DOES POCKETBASE NOT HAVE REAL TIME VIEW COLLECTIONS?
+		//pocketbase.collection('most_bookmarked').subscribe(nodeData.id!, (event) => {
+		//	console.log("test")
+		//	if (event.action == "update") {
+		//		bookmarks = event.record.bookmark_count;
+		//	}
+		//});
+
+		bookmarkId = (await pocketbase.collection('bookmarks').getFirstListItem("node=\'" + nodeData.id! + "\'" + "&& user=\'" + pocketbase.authStore.model!.id + "\'", { requestKey: null })).id;
+		reportId = (await pocketbase.collection('reports').getFirstListItem("node=\'" + nodeData.id! + "\'" + "&& user=\'" + pocketbase.authStore.model!.id + "\'", { requestKey: null })).id;
 
 		updateInterval = setInterval(async () => { updatePocketbaseRequest(nodeData, text); }, 5000);
 	});

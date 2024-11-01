@@ -57,6 +57,9 @@
 	<button onclick={openUsernameModal}>Change Account Settings</button>
 	<button onclick={signout}>Sign out of {username}</button>
 	{/if}
+	<a href="https://www.concurrentsquared.com/loof/rules">Rules</a>
+	<a href="https://www.concurrentsquared.com/loof/privacy">Privacy Policy</a>
+	<a href="https://www.concurrentsquared.com/loof/tos">Terms of Service</a>
 	<button onclick={onClose}>Close</button>
 </div>
 
@@ -77,8 +80,8 @@
 	h2 {
 		font-family: "Jost", "Futura", Arial, Helvetica, sans-serif;
 	}
-
-	button {
+	
+	button, a {
 		font-family: "Jost", "Futura", Arial, Helvetica, sans-serif;
 
 		background-color: rgb(250, 249, 243);

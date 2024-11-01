@@ -61,11 +61,14 @@
 	<button onclick={openUsernameModal}>Change Account Settings</button>
 	<button onclick={signout}>Sign out of {username}</button>
 	{/if}
+	<a href="https://www.concurrentsquared.com/loof/rules">Rules</a>
+	<a href="https://www.concurrentsquared.com/loof/privacy">Privacy Policy</a>
+	<a href="https://www.concurrentsquared.com/loof/tos">Terms of Service</a>
 </div>
 <button class="user-actions-button" onclick={openMobileMenuModal}>Menu</button>
 
 <style>
-	button {
+	button, a {
 		background-color: inherit;
 
 		border: 0;

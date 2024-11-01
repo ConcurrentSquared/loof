@@ -27,4 +27,5 @@
 	<label for="username">Username:</label>
 	<input type="text" name="username" id="username" required bind:value={username}>
 	<input type="submit">
+	<p>Your usage of Loof requires you to accept the <a href="https://www.concurrentsquared.com/loof/privacy">Privacy Policy</a>, <a href="https://www.concurrentsquared.com/loof/tos">Terms of Service</a>, and <a href="https://www.concurrentsquared.com/loof/rules">Rules</a>. In short, we only keep track of the text and usernames you submit, and you can request deletion of any data collected by us at any time (email us your request at concurentsquared@gmail.com). Do not post inapproporate, harmful, offensive, spamful, or copyrighted content, or else you will get banned permanently.</p>
 </form>
