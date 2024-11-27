@@ -14,14 +14,6 @@
     src: url('$lib/fonts/Courier_Prime/CourierPrime-Regular.ttf') format('truetype');
 }
 
-@font-face {
-    font-family: "EB Garamond";
-    font-optical-sizing: auto;
-    font-display: swap;
-
-    src: url('$lib/fonts/EB_Garamond/EBGaramond-VariableFont_wght.ttf') format('truetype');
-}
-
 html, body {
     margin: 0 !important;
     padding: 0 !important;

@@ -49,7 +49,7 @@
 	}
 </script>
 
-<div class="node" style="top: {nodeData.y!.toString()}px; left: {nodeData.x!.toString()}px; display: {display};">
+<div class="node" style="top: {nodeData.y!.toString()}px; left: {nodeData.x!.toString()}px; display: block;">
 	{#if isEditable}
 	<textarea class="node-text-area" readonly={!isEditable} bind:value={editableText}></textarea>
 	{:else}

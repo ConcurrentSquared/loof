@@ -5,6 +5,12 @@
     import Switchbox from './switchbox.svelte';
     import { mount, onMount, tick } from 'svelte';
 
+	import branchIcon from "$lib/icons/branch.svg";
+	import bookmarkIcon from "$lib/icons/bookmark.svg";
+	import endBookmarkIcon from "$lib/icons/bookmark.svg";
+	import reportIcon from "$lib/icons/report.svg";
+	import endReportIcon from "$lib/icons/report-active.svg"
+
 	let { pocketbase = $bindable(new PocketBase('http://127.0.0.1:8090')), isLogin = ((pocketbase.authStore.model == null) ? false : true), bookmarks = "0", nodeData= {id: null,
 												
 												state: NodeState.moving,
@@ -170,12 +176,25 @@
 	{:else if (nodeData.state == NodeState.editing) && (nodeData.fromRobot == true)}
 	<p>Generating...</p>
 	{:else}
-	<button onclick={openSwitchbox} bind:this={NewBranchButton} disabled={!isLogin}>New Branch</button>
+	<button onclick={openSwitchbox} bind:this={NewBranchButton} disabled={!isLogin} aria-label="New branch"><img src="{branchIcon}" alt="Add a branch"></button>
 	{#if isSwitchboxOpen == true }
 	<Switchbox x_position={switchboxPositionX} y_position={switchboxPositionY} on_write_selection={addHumanNode} on_generate_selection={addAINode}></Switchbox>
 	{/if}
-	<button onclick={addBookmarks} disabled={!isLogin}>Bookmark: {bookmarks}</button>
-	<button onclick={addReport} disabled={!isLogin}>Report</button>
+	<button class="bookmark-button" onclick={addBookmarks} disabled={!isLogin} aria-label="Bookmark">
+		{:if bookmarkIcon == null}
+		<img src="{bookmarkIcon}" alt="Bookmark">
+		{:else}
+		<img src="{endBookmarkIcon}" alt="Unbookmark">
+		{/if}
+		<p class="bookmark-label">{bookmarks}</p>
+	</button>
+	<button onclick={addReport} disabled={!isLogin} aria-label="Report">
+		{#if reportId == null}
+		<img src="{reportIcon}" alt="Report">
+		{:else}
+		<img src="{endReportIcon}" alt="Unreport">
+		{/if}
+	</button>
 	<p>Written by {authorUsername}</p>
 	{/if}
 </div>
@@ -217,6 +236,11 @@
 		cursor: not-allowed;
 	}
 
+	.bookmark-button {
+		display: flex;
+    	align-items: center;
+	}
+
 	p {
 		font: 0.85em "Jost", Arial, Helvetica, sans-serif;
 
@@ -227,5 +251,18 @@
 		margin: 0;
 		margin-top: auto;
 		margin-bottom: auto;
+	}
+
+	.bookmark-label {
+		display: inline-block;
+	}
+
+	img {
+		width: 24px;
+		height: 24px;
+
+		margin-top: auto;
+		margin-bottom: auto;
+		display: block;
 	}
 </style>

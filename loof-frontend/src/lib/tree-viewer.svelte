@@ -8,7 +8,7 @@
     import LoginButton from './login-button.svelte';
 	import { fromDatabase, type NodeData, NodeState, toDatabase } from './node-data.svelte'
 
-	let { pocketbase = (new PocketBase('http://127.0.0.1:8090')), isLogin = ((pocketbase.authStore.model == null) ? false : true) }: { pocketbase: PocketBase, isLogin: boolean } = $props();
+	let { pocketbase = (new PocketBase('https://127.0.0.1:8090')), isLogin = ((pocketbase.authStore.model == null) ? false : true) }: { pocketbase: PocketBase, isLogin: boolean } = $props();
 
 	const searchParams = stateParams({
 		schema: {
