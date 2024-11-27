@@ -7,7 +7,7 @@
 
 	import branchIcon from "$lib/icons/branch.svg";
 	import bookmarkIcon from "$lib/icons/bookmark.svg";
-	import endBookmarkIcon from "$lib/icons/bookmark.svg";
+	import endBookmarkIcon from "$lib/icons/bookmark-active.svg";
 	import reportIcon from "$lib/icons/report.svg";
 	import endReportIcon from "$lib/icons/report-active.svg"
 
@@ -159,9 +159,18 @@
 		//	}
 		//});
 
-		bookmarkId = (await pocketbase.collection('bookmarks').getFirstListItem("node=\'" + nodeData.id! + "\'" + "&& user=\'" + pocketbase.authStore.model!.id + "\'", { requestKey: null })).id;
-		reportId = (await pocketbase.collection('reports').getFirstListItem("node=\'" + nodeData.id! + "\'" + "&& user=\'" + pocketbase.authStore.model!.id + "\'", { requestKey: null })).id;
-
+		try {
+			bookmarkId = (await pocketbase.collection('bookmarks').getFirstListItem("node=\'" + nodeData.id! + "\'" + "&& user.id=\'" + pocketbase.authStore.model!.id + "\'", { requestKey: null })).id;
+		} catch (error) {
+			bookmarkId = null
+		}
+		
+		//reportId = (await pocketbase.collection('reports').getFirstListItem("node=\'" + nodeData.id! + "\'" + "&& user=\'" + pocketbase.authStore.model!.id + "\'", { requestKey: null })).id;
+		reportId = null
+		if (bookmarkId != null) {
+			console.log("test:" + bookmarkId)
+		}
+		
 		updateInterval = setInterval(async () => { updatePocketbaseRequest(nodeData, text); }, 5000);
 	});
 </script>
@@ -181,7 +190,7 @@
 	<Switchbox x_position={switchboxPositionX} y_position={switchboxPositionY} on_write_selection={addHumanNode} on_generate_selection={addAINode}></Switchbox>
 	{/if}
 	<button class="bookmark-button" onclick={addBookmarks} disabled={!isLogin} aria-label="Bookmark">
-		{:if bookmarkIcon == null}
+		{#if bookmarkId == null}
 		<img src="{bookmarkIcon}" alt="Bookmark">
 		{:else}
 		<img src="{endBookmarkIcon}" alt="Unbookmark">
