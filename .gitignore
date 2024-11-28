@@ -26,3 +26,5 @@ go.work.sum
 
 # Pocketbase data
 pb_data/
+
+build.zip
